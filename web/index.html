@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人工具平台</title>
+
+    <!-- 引入Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <!-- 引入Vue Router 4 -->
+    <script src="https://unpkg.com/vue-router@4"></script>
+
+    <!-- 引入Axios -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <!-- 引入SweetAlert2（用于提示框） -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- 引入Bootstrap CSS（可选，用于样式） -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 导航栏样式 */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #333;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover {
+            background: #f5f5f5;
+            color: #667eea;
+        }
+
+        .nav-link.active {
+            background: #667eea;
+            color: white;
+        }
+
+        /* 卡片样式 */
+        .auth-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            max-width: 450px;
+            margin: 2rem auto;
+        }
+
+        .auth-card h2 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            background: #f8f9fa;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-control.error {
+            border-color: #e74c3c;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-link {
+            background: none;
+            color: #667eea;
+            padding: 0.5rem;
+        }
+
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+
+        /* 消息提示 */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .alert-danger {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background: #efffef;
+            color: #2a7;
+            border: 1px solid #cfc;
+        }
+
+        /* 个人中心样式 */
+        .profile-card {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-top: 1rem;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .profile-info h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-info p {
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        /* 链接容器 */
+        .links-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .auth-card {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+
+            .navbar {
+                padding: 0.75rem;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+        }
+
+        /* 加载动画 */
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 主页样式 */
+        .home-container {
+            text-align: center;
+            color: white;
+            padding: 4rem 1rem;
+        }
+
+        .home-title {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .home-subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .home-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .home-btn {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="app-container">
+        <!-- 导航栏 -->
+        <nav v-if="isAuthenticated" class="navbar">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <a href="/" class="navbar-brand">
+                    <i class="bi bi-mortarboard-fill"></i> 个人工具平台
+                </a>
+                <div class="nav-links">
+                    <a href="/profile" class="nav-link" :class="{ active: currentRoute === 'profile' }" @click.prevent="navigateTo('profile')">
+                        <i class="bi bi-person-circle"></i> 个人中心
+                    </a>
+                    <button @click="logout" class="btn btn-link">
+                        <i class="bi bi-box-arrow-right"></i> 退出
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 路由内容 -->
+        <div v-if="currentRoute === 'home'">
+            <div class="home-container">
+                <h1 class="home-title">个人工具平台</h1>
+                <p class="home-subtitle">可以自主选择小工具</p>
+
+                <div v-if="!isAuthenticated" class="home-buttons">
+                    <a href="/login" class="btn btn-primary home-btn" @click.prevent="navigateTo('login')">
+                        <i class="bi bi-box-arrow-in-right"></i> 立即登录
+                    </a>
+                    <a href="/register" class="btn btn-secondary home-btn" @click.prevent="navigateTo('register')">
+                        <i class="bi bi-person-plus"></i> 注册账号
+                    </a>
+                </div>
+                <div v-else class="home-buttons">
+                    <a href="/profile" class="btn btn-primary home-btn" @click.prevent="navigateTo('profile')">
+                        <i class="bi bi-person-circle"></i> 进入个人中心
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div v-else-if="currentRoute === 'login'">
+            <div class="auth-card">
+                <h2>用户登录</h2>
+
+                <div v-if="loginError" class="alert alert-danger">
+                    {{ loginError }}
+                </div>
+
+                <div v-if="loginSuccess" class="alert alert-success">
+                    {{ loginSuccess }}
+                </div>
+
+                <form @submit.prevent="handleLogin">
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input
+                                v-model="loginForm.username"
+                                type="text"
+                                class="form-control"
+                                placeholder="请输入用户名"
+                                required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">密码</label>
+                        <input
+                                v-model="loginForm.password"
+                                type="password"
+                                class="form-control"
+                                placeholder="请输入密码"
+                                required
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" :disabled="loginLoading">
+                        <span v-if="loginLoading" class="spinner"></span>
+                        {{ loginLoading ? '登录中...' : '登录' }}
+                    </button>
+
+                    <div class="links-container">
+                        <a href="/register" class="btn-link">注册账号</a>
+                        <span>|</span>
+                        <a href="/forgot-password" class="btn-link">忘记密码？</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div v-else-if="currentRoute === 'register'">
+            <div class="auth-card">
+                <h2>用户注册</h2>
+
+                <div v-if="registerError" class="alert alert-danger">
+                    {{ registerError }}
+                </div>
+
+                <div v-if="registerSuccess" class="alert alert-success">
+                    {{ registerSuccess }}
+                </div>
+
+                <form @submit.prevent="handleRegister">
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input
+                                v-model="registerForm.username"
+                                type="text"
+                                class="form-control"
+                                placeholder="请输入用户名（3-50个字符）"
+                                required
+                                minlength="3"
+                                maxlength="50"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">邮箱（可选）</label>
+                        <input
+                                v-model="registerForm.email"
+                                type="email"
+                                class="form-control"
+                                placeholder="请输入邮箱"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">密码</label>
+                        <input
+                                v-model="registerForm.password"
+                                type="password"
+                                class="form-control"
+                                placeholder="请输入密码（至少6个字符）"
+                                required
+                                minlength="6"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">确认密码</label>
+                        <input
+                                v-model="registerForm.confirmPassword"
+                                type="password"
+                                class="form-control"
+                                placeholder="请再次输入密码"
+                                required
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" :disabled="registerLoading">
+                        <span v-if="registerLoading" class="spinner"></span>
+                        {{ registerLoading ? '注册中...' : '注册' }}
+                    </button>
+
+                    <div class="links-container">
+                        <a href="#/login" class="btn-link">已有账号？立即登录</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div v-else-if="currentRoute === 'forgot-password'">
+            <div class="auth-card">
+                <h2>忘记密码</h2>
+
+                <div v-if="forgotPasswordError" class="alert alert-danger">
+                    {{ forgotPasswordError }}
+                </div>
+
+                <div v-if="forgotPasswordSuccess" class="alert alert-success">
+                    {{ forgotPasswordSuccess }}
+                </div>
+
+                <form @submit.prevent="handleSendCode">
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input
+                                v-model="forgotPasswordForm.username"
+                                type="text"
+                                class="form-control"
+                                placeholder="请输入用户名"
+                                required
+                                :disabled="codeSent"
+                        >
+                    </div>
+
+                    <button v-if="!codeSent" type="submit" class="btn btn-primary" :disabled="forgotPasswordLoading">
+                        <span v-if="forgotPasswordLoading" class="spinner"></span>
+                        {{ forgotPasswordLoading ? '发送中...' : '发送验证码' }}
+                    </button>
+
+                    <div v-if="codeSent">
+                        <div class="form-group">
+                            <label class="form-label">验证码</label>
+                            <input
+                                    v-model="forgotPasswordForm.code"
+                                    type="text"
+                                    class="form-control"
+                                    placeholder="请输入6位验证码"
+                                    maxlength="6"
+                                    required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">新密码</label>
+                            <input
+                                    v-model="forgotPasswordForm.newPassword"
+                                    type="password"
+                                    class="form-control"
+                                    placeholder="请输入新密码"
+                                    required
+                                    minlength="6"
+                            >
+                        </div>
+
+                        <button type="button" class="btn btn-primary" @click="handleResetPassword" :disabled="resetPasswordLoading">
+                            <span v-if="resetPasswordLoading" class="spinner"></span>
+                            {{ resetPasswordLoading ? '重置中...' : '重置密码' }}
+                        </button>
+                    </div>
+
+                    <div class="links-container">
+                        <a href="#/login" class="btn-link">返回登录</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div v-else-if="currentRoute === 'profile'">
+            <div class="profile-card">
+                <div v-if="loadingProfile" style="text-align: center; padding: 2rem;">
+                    <div class="spinner" style="width: 2rem; height: 2rem;"></div>
+                    <p>加载中...</p>
+                </div>
+
+                <div v-else-if="profileError" class="alert alert-danger">
+                    {{ profileError }}
+                </div>
+
+                <div v-else-if="userProfile">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            {{ userProfile.username?.charAt(0)?.toUpperCase() || 'U' }}
+                        </div>
+                        <div class="profile-info">
+                            <h3>{{ userProfile.username }}</h3>
+                            <p><i class="bi bi-envelope"></i> {{ userProfile.email || '未设置邮箱' }}</p>
+                            <p><i class="bi bi-calendar"></i> 注册时间: {{ formatDate(userProfile.created_at) }}</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-actions">
+                        <button @click="goToChangePassword" class="btn btn-primary">
+                            <i class="bi bi-key"></i> 修改密码
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-else-if="currentRoute === 'change-password'">
+            <div class="auth-card">
+                <h2>修改密码</h2>
+
+                <div v-if="changePasswordError" class="alert alert-danger">
+                    {{ changePasswordError }}
+                </div>
+
+                <div v-if="changePasswordSuccess" class="alert alert-success">
+                    {{ changePasswordSuccess }}
+                </div>
+
+                <form @submit.prevent="handleChangePassword">
+                    <div class="form-group">
+                        <label class="form-label">旧密码</label>
+                        <input
+                                v-model="changePasswordForm.oldPassword"
+                                type="password"
+                                class="form-control"
+                                placeholder="请输入旧密码"
+                                required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">新密码</label>
+                        <input
+                                v-model="changePasswordForm.newPassword"
+                                type="password"
+                                class="form-control"
+                                placeholder="请输入新密码（至少6个字符）"
+                                required
+                                minlength="6"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">确认新密码</label>
+                        <input
+                                v-model="changePasswordForm.confirmPassword"
+                                type="password"
+                                class="form-control"
+                                placeholder="请再次输入新密码"
+                                required
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" :disabled="changePasswordLoading">
+                        <span v-if="changePasswordLoading" class="spinner"></span>
+                        {{ changePasswordLoading ? '修改中...' : '修改密码' }}
+                    </button>
+
+                    <div class="links-container">
+                        <a href="#/profile" class="btn-link">返回个人中心</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // API配置
+    const API_BASE_URL = 'http://localhost:8080';
+
+    // 创建Vue应用
+    const { createApp, ref, onMounted, computed } = Vue;
+
+    const app = createApp({
+        setup() {
+            // 路由状态
+            const currentRoute = ref('home');
+
+            // 认证状态
+            const isAuthenticated = ref(false);
+            const token = ref(localStorage.getItem('token') || '');
+
+            // 初始化时检查token
+            onMounted(() => {
+                checkAuth();
+                setupRouting();
+            });
+
+            // 检查认证状态
+            const checkAuth = () => {
+                isAuthenticated.value = !!token.value;
+                if (token.value) {
+                    loadProfile();
+                }
+            };
+
+            // 简单的路由处理
+            // 简单的路径路由处理
+            const setupRouting = () => {
+                // 获取当前路径并解析路由
+                const path = window.location.pathname.replace('/web', '');
+                updateRouteFromPath(path);
+
+                // 监听链接点击，防止页面刷新
+                document.addEventListener('click', function(event) {
+                    const link = event.target.closest('a[href^="/"]');
+                    if (link && !link.hasAttribute('data-external')) {
+                        event.preventDefault();
+                        const href = link.getAttribute('href');
+                        navigateToPath(href);
+                        return false;
+                    }
+                });
+
+                // 监听浏览器前进后退
+                window.addEventListener('popstate', function() {
+                    const path = window.location.pathname.replace('/web', '');
+                    updateRouteFromPath(path);
+                });
+            };
+
+            // 从路径更新路由状态
+            const updateRouteFromPath = (path) => {
+                // 移除前后斜杠
+                const cleanPath = path.replace(/^\/|\/$/g, '');
+
+                // 映射路径到路由名称
+                const routeMap = {
+                    '': 'home',
+                    'login': 'login',
+                    'register': 'register',
+                    'forgot-password': 'forgot-password',
+                    'profile': 'profile',
+                    'change-password': 'change-password'
+                };
+
+                // 检查是否为受保护路由
+                const protectedRoutes = ['profile', 'change-password'];
+                const routeName = routeMap[cleanPath] || 'home';
+
+                if (protectedRoutes.includes(routeName) && !isAuthenticated.value) {
+                    // 未认证访问保护路由，重定向到登录
+                    navigateToPath('/login');
+                    return;
+                }
+
+                currentRoute.value = routeName;
+
+                // 如果是profile页面，加载用户信息
+                if (routeName === 'profile') {
+                    loadProfile();
+                }
+            };
+
+
+            // 简单的导航函数
+            const navigateTo = (route) => {
+                const routeToPath = {
+                    'home': '/',
+                    'login': '/login',
+                    'register': '/register',
+                    'forgot-password': '/forgot-password',
+                    'profile': '/profile',
+                    'change-password': '/change-password'
+                };
+
+                const path = routeToPath[route] || '/';
+                navigateToPath(path);
+            };
+
+            // 导航到指定路径
+            const navigateToPath = (path) => {
+                const fullPath = '/web' + path;
+
+                // 更新浏览器历史记录
+                window.history.pushState({}, '', fullPath);
+
+                // 更新路由状态
+                updateRouteFromPath(path);
+            };
+
+            // 跳转到修改密码页面
+            const goToChangePassword = () => {
+                navigateTo('change-password');
+            };
+
+            // API请求函数
+            const makeRequest = async (method, endpoint, data = null) => {
+                const config = {
+                    method,
+                    url: `${API_BASE_URL}${endpoint}`,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                if (token.value) {
+                    config.headers['Authorization'] = `Bearer ${token.value}`;
+                }
+
+                if (data) {
+                    config.data = data;
+                }
+
+                try {
+                    const response = await axios(config);
+                    return response.data;
+                } catch (error) {
+                    console.error('API请求错误:', error);
+                    throw error;
+                }
+            };
+
+            // 登录相关
+            const loginForm = ref({ username: '', password: '' });
+            const loginLoading = ref(false);
+            const loginError = ref('');
+            const loginSuccess = ref('');
+
+            const handleLogin = async () => {
+                loginLoading.value = true;
+                loginError.value = '';
+                loginSuccess.value = '';
+
+                try {
+                    const response = await makeRequest('POST', '/api/login', {
+                        username: loginForm.value.username,
+                        password: loginForm.value.password
+                    });
+
+                    token.value = response.token;
+                    localStorage.setItem('token', token.value);
+                    isAuthenticated.value = true;
+
+                    loginSuccess.value = '登录成功！';
+                    setTimeout(() => {
+                        navigateTo('profile');
+                    }, 1000);
+
+                } catch (error) {
+                    loginError.value = error.response?.data?.error || '登录失败，请检查用户名和密码';
+                } finally {
+                    loginLoading.value = false;
+                }
+            };
+
+            // 注册相关
+            const registerForm = ref({
+                username: '',
+                email: '',
+                password: '',
+                confirmPassword: ''
+            });
+            const registerLoading = ref(false);
+            const registerError = ref('');
+            const registerSuccess = ref('');
+
+            const handleRegister = async () => {
+                if (registerForm.value.password !== registerForm.value.confirmPassword) {
+                    registerError.value = '两次输入的密码不一致';
+                    return;
+                }
+
+                registerLoading.value = true;
+                registerError.value = '';
+                registerSuccess.value = '';
+
+                try {
+                    await makeRequest('POST', '/api/register', {
+                        username: registerForm.value.username,
+                        email: registerForm.value.email,
+                        password: registerForm.value.password
+                    });
+
+                    registerSuccess.value = '注册成功！正在跳转到登录页面...';
+                    setTimeout(() => {
+                        navigateTo('login');
+                    }, 2000);
+
+                } catch (error) {
+                    registerError.value = error.response?.data?.error || '注册失败，请重试';
+                } finally {
+                    registerLoading.value = false;
+                }
+            };
+
+            // 忘记密码相关
+            const forgotPasswordForm = ref({
+                username: '',
+                code: '',
+                newPassword: ''
+            });
+            const forgotPasswordLoading = ref(false);
+            const resetPasswordLoading = ref(false);
+            const forgotPasswordError = ref('');
+            const forgotPasswordSuccess = ref('');
+            const codeSent = ref(false);
+
+            const handleSendCode = async () => {
+                forgotPasswordLoading.value = true;
+                forgotPasswordError.value = '';
+                forgotPasswordSuccess.value = '';
+
+                try {
+                    await makeRequest('POST', '/api/auth/send-code', {
+                        username: forgotPasswordForm.value.username,
+                        code_type: 'password_reset'
+                    });
+
+                    codeSent.value = true;
+                    forgotPasswordSuccess.value = '验证码已发送，请查看控制台（后端会打印验证码）';
+
+                } catch (error) {
+                    forgotPasswordError.value = error.response?.data?.error || '发送验证码失败';
+                } finally {
+                    forgotPasswordLoading.value = false;
+                }
+            };
+
+            const handleResetPassword = async () => {
+                if (!forgotPasswordForm.value.code || forgotPasswordForm.value.code.length !== 6) {
+                    forgotPasswordError.value = '请输入6位验证码';
+                    return;
+                }
+
+                resetPasswordLoading.value = true;
+                forgotPasswordError.value = '';
+
+                try {
+                    await makeRequest('POST', '/api/auth/reset-password', {
+                        username: forgotPasswordForm.value.username,
+                        code: forgotPasswordForm.value.code,
+                        new_password: forgotPasswordForm.value.newPassword
+                    });
+
+                    forgotPasswordSuccess.value = '密码重置成功！正在跳转到登录页面...';
+                    setTimeout(() => {
+                        navigateTo('login');
+                    }, 2000);
+
+                } catch (error) {
+                    forgotPasswordError.value = error.response?.data?.error || '重置密码失败';
+                } finally {
+                    resetPasswordLoading.value = false;
+                }
+            };
+
+            // 个人资料相关
+            const userProfile = ref(null);
+            const loadingProfile = ref(false);
+            const profileError = ref('');
+
+            const loadProfile = async () => {
+                if (!token.value) return;
+
+                loadingProfile.value = true;
+                profileError.value = '';
+
+                try {
+                    userProfile.value = await makeRequest('GET', '/api/profile');
+                } catch (error) {
+                    profileError.value = '获取用户信息失败';
+                    console.error('获取用户信息错误:', error);
+                } finally {
+                    loadingProfile.value = false;
+                }
+            };
+
+            // 修改密码相关
+            const changePasswordForm = ref({
+                oldPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            });
+            const changePasswordLoading = ref(false);
+            const changePasswordError = ref('');
+            const changePasswordSuccess = ref('');
+
+            const handleChangePassword = async () => {
+                if (changePasswordForm.value.newPassword !== changePasswordForm.value.confirmPassword) {
+                    changePasswordError.value = '两次输入的新密码不一致';
+                    return;
+                }
+
+                if (changePasswordForm.value.oldPassword === changePasswordForm.value.newPassword) {
+                    changePasswordError.value = '新密码不能与旧密码相同';
+                    return;
+                }
+
+                changePasswordLoading.value = true;
+                changePasswordError.value = '';
+                changePasswordSuccess.value = '';
+
+                try {
+                    await makeRequest('POST', '/api/update-password', {
+                        old_password: changePasswordForm.value.oldPassword,
+                        new_password: changePasswordForm.value.newPassword
+                    });
+
+                    changePasswordSuccess.value = '密码修改成功！';
+
+                    // 清空表单
+                    changePasswordForm.value = {
+                        oldPassword: '',
+                        newPassword: '',
+                        confirmPassword: ''
+                    };
+
+                } catch (error) {
+                    changePasswordError.value = error.response?.data?.error || '修改密码失败';
+                } finally {
+                    changePasswordLoading.value = false;
+                }
+            };
+
+            // 退出登录
+            const logout = async () => {
+                try {
+                    await makeRequest('POST', '/api/logout');
+                } catch (error) {
+                    console.error('退出登录失败:', error);
+                } finally {
+                    token.value = '';
+                    localStorage.removeItem('token');
+                    isAuthenticated.value = false;
+                    userProfile.value = null;
+                    navigateTo('home');
+                }
+            };
+
+            // 工具函数
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
+            // 首页按钮的点击处理（添加到return中）
+            const handleHomeButtonClick = () => {
+                if (isAuthenticated.value) {
+                    navigateTo('profile');
+                } else {
+                    navigateTo('login');
+                }
+            };
+
+            return {
+                // 路由和状态
+                currentRoute,
+                isAuthenticated,
+
+                // 导航函数
+                navigateTo,
+                navigateToPath,
+                goToChangePassword,
+                handleHomeButtonClick,
+
+                // 登录
+                loginForm,
+                loginLoading,
+                loginError,
+                loginSuccess,
+                handleLogin,
+
+                // 注册
+                registerForm,
+                registerLoading,
+                registerError,
+                registerSuccess,
+                handleRegister,
+
+                // 忘记密码
+                forgotPasswordForm,
+                forgotPasswordLoading,
+                resetPasswordLoading,
+                forgotPasswordError,
+                forgotPasswordSuccess,
+                codeSent,
+                handleSendCode,
+                handleResetPassword,
+
+                // 个人资料
+                userProfile,
+                loadingProfile,
+                profileError,
+
+                // 修改密码
+                changePasswordForm,
+                changePasswordLoading,
+                changePasswordError,
+                changePasswordSuccess,
+                handleChangePassword,
+
+                // 退出登录
+                logout,
+
+                // 工具函数
+                formatDate
+            };
+        }
+    });
+
+    // 挂载应用
+    app.mount('#app');
+</script>
+</body>
+</html>
