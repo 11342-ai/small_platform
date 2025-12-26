@@ -20,6 +20,9 @@ func InitDB() {
 	err = DB.AutoMigrate(
 		&User{},
 		&VerificationCode{},
+		&UserAPI{},     // 新增
+		&ChatSession{}, // 新增
+		&ChatMessage{}, // 新增
 	)
 	if err != nil {
 		log.Fatal("数据库迁移失败:", err)

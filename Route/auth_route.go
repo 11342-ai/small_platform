@@ -56,24 +56,41 @@ func AuthRoute() {
 			user, _ := c.Get("user_id")
 			c.JSON(http.StatusOK, gin.H{"user_id": user})
 		})
+
+		// = = = = = = = = = = = = = = =
+
+		{
+			auth.POST("/user/apis", CreateUserAPI)
+			auth.GET("/user/apis", GetUserAPIs)
+			auth.GET("/user/apis/first", GetFirstAvailableAPI)
+			auth.GET("/user/apis/:name", GetUserAPIByName)
+			auth.PUT("/user/apis/:id", UpdateUserAPI)
+			auth.DELETE("/user/apis/:id", DeleteUserAPI)
+		}
+
 	}
 
+	r.GET("/", func(c *gin.Context) {
+		c.File("./web/index.html")
+	})
+
+	r.GET("/profile", func(c *gin.Context) {
+		c.File("./web/profile.html")
+	})
+
+	r.GET("/api_keys", func(c *gin.Context) {
+		c.File("./web/api_keys.html")
+	})
+
 	// 前端路由 - 支持SPA
-	// 修改后
 	r.NoRoute(func(c *gin.Context) {
-		// 使用 strings.HasPrefix 检查前缀，更安全
+		// 如果是API请求，返回404
 		if strings.HasPrefix(c.Request.URL.Path, "/api") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "API not found"})
 			return
 		}
 
-		// 个人中心页面
-		//if strings.HasPrefix(c.Request.URL.Path, "/profile") {
-		//	c.File("./web/profile.html")
-		//	return
-		//}
-
-		// 返回前端应用
+		// 否则返回前端应用
 		c.File("./web/index.html")
 	})
 

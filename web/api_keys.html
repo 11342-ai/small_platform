@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API密钥管理</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            min-height: calc(100vh - 40px);
+        }
+
+        /* 导航栏 */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #333;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .nav-link:hover {
+            background: #f5f5f5;
+            color: #667eea;
+        }
+
+        /* 消息提示 */
+        .message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* 按钮 */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 0.9rem;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .api-key-cell {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: #dee2e6;
+            margin-bottom: 15px;
+        }
+
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #999;
+            cursor: pointer;
+            padding: 5px;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-control:disabled {
+            background: #e9ecef;
+            cursor: not-allowed;
+        }
+
+        .form-help {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        /* 加载动画 */
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            .modal-content {
+                margin: 10px;
+                max-height: calc(100vh - 20px);
+            }
+
+            .modal-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <i class="bi bi-key-fill"></i> API密钥管理
+            </div>
+            <div class="nav-links">
+                <a href="/web/profile" class="nav-link" data-external>
+                    <i class="bi bi-person-circle"></i> 个人中心
+                </a>
+                <a href="/" class="nav-link" data-external>
+                    <i class="bi bi-house"></i> 返回首页
+                </a>
+            </div>
+        </nav>
+
+        <!-- 消息提示 -->
+        <div v-if="message" :class="['message', messageType]">
+            <span>{{ message }}</span>
+            <button @click="message = ''" style="background: none; border: none; cursor: pointer; color: inherit;">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+
+        <!-- API配置列表 -->
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">
+                    <i class="bi bi-list-ul"></i> 我的API配置（共 {{ apis.length }} 个）
+                </h3>
+                <div style="display: flex; gap: 10px;">
+                    <button
+                            @click="openAddModal"
+                            class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> 添加API配置
+                    </button>
+                    <button
+                            v-if="apis.length > 0"
+                            @click="refreshApis"
+                            class="btn btn-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新列表
+                    </button>
+                </div>
+            </div>
+
+            <table v-if="apis.length > 0">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>名称</th>
+                    <th>模型</th>
+                    <th>API密钥</th>
+                    <th>Base URL</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="api in apis" :key="api.id">
+                    <td>{{ api.id }}</td>
+                    <td>
+                        <strong>{{ api.api_name }}</strong>
+                    </td>
+                    <td>{{ api.model_name || '未设置' }}</td>
+                    <td class="api-key-cell">
+                        {{ api.api_key || '未设置' }}
+                    </td>
+                    <td>
+                            <span v-if="api.base_url" style="font-family: monospace; font-size: 0.8rem;">
+                                {{ truncateUrl(api.base_url) }}
+                            </span>
+                        <span v-else style="color: #6c757d;">默认</span>
+                    </td>
+                    <td>{{ formatDate(api.created_at) }}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <button
+                                    @click="openEditModal(api)"
+                                    class="btn btn-sm btn-primary">
+                                <i class="bi bi-pencil"></i> 编辑
+                            </button>
+                            <button
+                                    @click="deleteApi(api.id)"
+                                    class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i> 删除
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div v-else class="empty-state">
+                <i class="bi bi-key"></i>
+                <h3>暂无API配置</h3>
+                <p>点击上方的"添加API配置"按钮来添加您的第一个API密钥</p>
+                <p class="form-help">您需要至少配置一个API密钥才能使用聊天功能</p>
+            </div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #667eea;">
+            <h4><i class="bi bi-info-circle"></i> 使用说明</h4>
+            <ul style="margin-top: 10px; padding-left: 20px; color: #555;">
+                <li>API密钥将被安全加密存储</li>
+                <li>您可以为每个API配置不同的模型和基础URL</li>
+                <li>在聊天界面中，您可以选择使用哪个API配置</li>
+                <li>如果您有多个API密钥，建议为每个密钥起一个易于识别的名称</li>
+                <li>Base URL字段可选，不填写时将使用标准的OpenAI兼容API地址</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 添加/编辑弹窗 -->
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <i class="bi" :class="editingApi ? 'bi-pencil-square' : 'bi-plus-circle'"></i>
+                    {{ editingApi ? '编辑API配置' : '添加新的API配置' }}
+                </h2>
+                <button @click="closeModal" class="modal-close">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="apiName">
+                                <i class="bi bi-tag"></i> API名称 *
+                            </label>
+                            <input
+                                    type="text"
+                                    id="apiName"
+                                    v-model="form.api_name"
+                                    :disabled="editingApi"
+                                    class="form-control"
+                                    placeholder="为这个API起个名字，如：DeepSeek主密钥"
+                                    required>
+                            <div class="form-help">用于识别不同的API配置，不能重复</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="modelName">
+                                <i class="bi bi-cpu"></i> 模型名称 *
+                            </label>
+                            <input
+                                    type="text"
+                                    id="modelName"
+                                    v-model="form.model_name"
+                                    class="form-control"
+                                    placeholder="如：deepseek-chat、gpt-3.5-turbo"
+                                    required>
+                            <div class="form-help">要使用的模型名称</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="apiKey">
+                        <i class="bi bi-key"></i> API密钥 *
+                    </label>
+                    <input
+                            type="text"
+                            id="apiKey"
+                            v-model="form.api_key"
+                            class="form-control"
+                            placeholder="输入您的API密钥，例如：sk-xxx..."
+                            required>
+                    <div class="form-help">密钥将被加密存储，为了方便输入和核对，这里明文显示</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="baseUrl">
+                        <i class="bi bi-link-45deg"></i> Base URL（可选）
+                    </label>
+                    <input
+                            type="url"
+                            id="baseUrl"
+                            v-model="form.base_url"
+                            class="form-control"
+                            placeholder="如：https://api.deepseek.com/v1">
+                    <div class="form-help">如果不填写，将使用默认的OpenAI兼容API地址</div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button
+                        @click="closeModal"
+                        class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </button>
+                <button
+                        v-if="!editingApi"
+                        @click="createApi"
+                        :disabled="loading"
+                        class="btn btn-primary">
+                    <span v-if="loading" class="spinner"></span>
+                    <i class="bi bi-plus-circle"></i> 添加API配置
+                </button>
+                <button
+                        v-else
+                        @click="updateApi"
+                        :disabled="loading"
+                        class="btn btn-success">
+                    <span v-if="loading" class="spinner"></span>
+                    <i class="bi bi-check-circle"></i> 保存更改
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            // 状态管理
+            const apis = ref([]);
+            const form = ref({
+                api_name: '',
+                model_name: '',
+                api_key: '',
+                base_url: ''
+            });
+            const editingApi = ref(null);
+            const showModal = ref(false);
+            const message = ref('');
+            const messageType = ref('');
+            const loading = ref(false);
+
+            // API基础URL
+            const API_BASE = '/api/user/apis';
+            const token = localStorage.getItem('token');
+
+            // 检查认证状态
+            const checkAuth = () => {
+                if (!token) {
+                    showMessage('请先登录', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    return false;
+                }
+                return true;
+            };
+
+            // 显示消息
+            const showMessage = (text, type = 'success') => {
+                message.value = text;
+                messageType.value = type;
+                // 5秒后自动清除消息
+                setTimeout(() => {
+                    if (message.value === text) {
+                        message.value = '';
+                    }
+                }, 5000);
+            };
+
+            // 打开添加弹窗
+            const openAddModal = () => {
+                resetForm();
+                showModal.value = true;
+            };
+
+            // 打开编辑弹窗
+            const openEditModal = (api) => {
+                editingApi.value = api;
+                form.value = {
+                    api_name: api.api_name,
+                    model_name: api.model_name,
+                    api_key: '', // 不显示原密钥，需要重新输入
+                    base_url: api.base_url || ''
+                };
+                showModal.value = true;
+            };
+
+            // 关闭弹窗
+            const closeModal = () => {
+                showModal.value = false;
+                // 延迟一小段时间后重置表单，避免动画冲突
+                setTimeout(() => {
+                    resetForm();
+                }, 300);
+            };
+
+            // 获取所有API配置
+            const fetchApis = async () => {
+                if (!checkAuth()) return;
+
+                loading.value = true;
+                try {
+                    const response = await axios.get(API_BASE, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.data && response.data.apis) {
+                        apis.value = response.data.apis;
+                    } else {
+                        apis.value = [];
+                    }
+                } catch (error) {
+                    console.error('获取API配置失败:', error);
+                    if (error.response?.status === 401) {
+                        localStorage.removeItem('token');
+                        showMessage('登录已过期，请重新登录', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 2000);
+                    } else {
+                        showMessage('获取API配置失败: ' + (error.response?.data?.error || error.message), 'error');
+                    }
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            // 刷新列表
+            const refreshApis = () => {
+                fetchApis();
+                showMessage('列表已刷新', 'info');
+            };
+
+            // 创建API配置
+            const createApi = async () => {
+                if (!checkAuth()) return;
+
+                // 验证表单
+                if (!form.value.api_name || !form.value.model_name || !form.value.api_key) {
+                    showMessage('请填写所有必填字段（带*号）', 'error');
+                    return;
+                }
+
+                loading.value = true;
+                try {
+                    const response = await axios.post(API_BASE, {
+                        api_name: form.value.api_name,
+                        api_key: form.value.api_key,
+                        model_name: form.value.model_name,
+                        base_url: form.value.base_url || undefined
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    showMessage('API配置创建成功');
+                    closeModal();
+                    fetchApis();
+                } catch (error) {
+                    console.error('创建API配置失败:', error);
+                    showMessage('创建失败: ' + (error.response?.data?.error || error.message), 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            // 更新API配置
+            const updateApi = async () => {
+                if (!checkAuth() || !editingApi.value) return;
+
+                // 验证表单
+                if (!form.value.model_name) {
+                    showMessage('模型名称不能为空', 'error');
+                    return;
+                }
+
+                loading.value = true;
+                try {
+                    // 构建更新数据
+                    const updates = {
+                        model_name: form.value.model_name,
+                        base_url: form.value.base_url || ''
+                    };
+
+                    // 如果用户输入了新密钥，则更新
+                    if (form.value.api_key) {
+                        updates.api_key = form.value.api_key;
+                    }
+
+                    await axios.put(`${API_BASE}/${editingApi.value.id}`, updates, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    showMessage('API配置更新成功');
+                    closeModal();
+                    fetchApis();
+                } catch (error) {
+                    console.error('更新API配置失败:', error);
+                    showMessage('更新失败: ' + (error.response?.data?.error || error.message), 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            // 删除API配置
+            const deleteApi = async (apiId) => {
+                if (!checkAuth()) return;
+
+                if (!confirm('确定要删除这个API配置吗？此操作不可撤销。')) {
+                    return;
+                }
+
+                loading.value = true;
+                try {
+                    await axios.delete(`${API_BASE}/${apiId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    showMessage('API配置删除成功');
+                    fetchApis();
+                } catch (error) {
+                    console.error('删除API配置失败:', error);
+                    showMessage('删除失败: ' + (error.response?.data?.error || error.message), 'error');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            // 重置表单
+            const resetForm = () => {
+                form.value = {
+                    api_name: '',
+                    model_name: '',
+                    api_key: '',
+                    base_url: ''
+                };
+                editingApi.value = null;
+            };
+
+            // 工具函数：格式化日期
+            const formatDate = (dateString) => {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
+            // 工具函数：截断URL显示
+            const truncateUrl = (url) => {
+                if (url.length <= 30) return url;
+                return url.substring(0, 27) + '...';
+            };
+
+            // 组件挂载时获取数据
+            onMounted(() => {
+                if (checkAuth()) {
+                    fetchApis();
+                }
+            });
+
+            return {
+                apis,
+                form,
+                editingApi,
+                showModal,
+                message,
+                messageType,
+                loading,
+                openAddModal,
+                openEditModal,
+                closeModal,
+                fetchApis,
+                refreshApis,
+                createApi,
+                updateApi,
+                deleteApi,
+                formatDate,
+                truncateUrl
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
