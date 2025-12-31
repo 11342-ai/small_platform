@@ -5,8 +5,9 @@ import (
 	"platfrom/Config"
 	"platfrom/Route"
 	"platfrom/database"
-	"platfrom/service"
+	"platfrom/service/Auth"
 	"platfrom/service/LLM_Chat"
+	"platfrom/service/Note"
 )
 
 func main() {
@@ -28,11 +29,11 @@ func main() {
 
 	//启动验证码清理任务（只创建一次）
 	// 初始化 UserService（数据库已初始化后）
-	_ = service.NewUserService()
-	if service.GlobalUserService == nil {
+	_ = Auth.NewUserService()
+	if Auth.GlobalUserService == nil {
 		log.Fatal("Failed to initialize UserService")
 	}
-	service.GlobalUserService.StartCleanupTask()
+	Auth.GlobalUserService.StartCleanupTask()
 
 	_ = LLM_Chat.NewUserAPIService()
 	if LLM_Chat.GlobalUserAPIService == nil {
@@ -70,6 +71,11 @@ func main() {
 	}
 
 	LLM_Chat.InitSessionManager(LLM_Chat.GlobalChatService, LLM_Chat.GlobalCacheService, LLM_Chat.GlobalUserAPIService, LLM_Chat.GlobalPersonaManager)
+
+	_ = Note.NewNoteService()
+	if Note.GlobalNoteService == nil {
+		log.Fatal("Failed to initialize GlobalNoteService")
+	}
 
 	// 启动路由
 	log.Println("服务器启动中...")

@@ -28,6 +28,7 @@ func InitDB() {
 		&ChatSession{}, // 新增
 		&ChatMessage{}, // 新增
 		&UploadedFile{},
+		&Note{},
 	)
 	if err != nil {
 		log.Fatal("数据库迁移失败:", err)

@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>笔记管理 - Airi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 头部 */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .logo i {
+            color: #4a90e2;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: #357ae8;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid #ddd;
+            color: #666;
+        }
+
+        .btn-outline:hover {
+            background-color: #f5f5f5;
+            border-color: #ccc;
+        }
+
+        .btn-danger {
+            background-color: #ff4444;
+        }
+
+        .btn-danger:hover {
+            background-color: #cc0000;
+        }
+
+        /* 搜索栏 */
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-bar input:focus {
+            border-color: #4a90e2;
+        }
+
+        /* 主布局 */
+        .main-layout {
+            display: flex;
+            gap: 30px;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 250px;
+            flex-shrink: 0;
+        }
+
+        .sidebar h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar h3 i {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .category-list, .tag-list {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+
+        .category-list li, .tag-list li {
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .category-list li:hover, .tag-list li:hover {
+            background-color: #f0f7ff;
+        }
+
+        .category-list li.active, .tag-list li.active {
+            background-color: #e3f2fd;
+            color: #4a90e2;
+            font-weight: 500;
+        }
+
+        .category-count, .tag-count {
+            background-color: #e0e0e0;
+            color: #666;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .category-list li.active .category-count,
+        .tag-list li.active .tag-count {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        /* 笔记网格 */
+        .content {
+            flex: 1;
+        }
+
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .note-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .note-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .note-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .note-category {
+            display: inline-block;
+            background-color: #e3f2fd;
+            color: #4a90e2;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .note-content {
+            flex: 1;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .note-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .note-tag {
+            background-color: #f0f0f0;
+            color: #666;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .note-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .note-action {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .note-action:hover {
+            color: #4a90e2;
+            background-color: #f0f7ff;
+        }
+
+        .note-action.delete-note:hover {
+            color: #ff4444;
+            background-color: #ffeaea;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .close-modal:hover {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        /* 表单 */
+        .form-group {
+            margin-bottom: 20px;
+            padding: 0 20px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: #4a90e2;
+        }
+
+        textarea.form-control {
+            min-height: 200px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        /* 标签输入 */
+        .tags-input {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px;
+            min-height: 44px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .tag {
+            background-color: #e3f2fd;
+            color: #4a90e2;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 2px;
+        }
+
+        .tag-remove:hover {
+            color: #ff4444;
+        }
+
+        .tag-input {
+            border: none;
+            outline: none;
+            padding: 8px;
+            flex: 1;
+            min-width: 120px;
+            font-size: 14px;
+        }
+
+        /* 表单操作 */
+        .form-actions {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* 提示消息 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: #333;
+            color: white;
+            border-radius: 6px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 1100;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success {
+            background-color: #28a745;
+        }
+
+        .toast.error {
+            background-color: #dc3545;
+        }
+
+        /* 响应式 */
+        @media (max-width: 992px) {
+            .main-layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .notes-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .search-bar {
+                flex-direction: column;
+            }
+
+            .notes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <!-- 添加返回主页按钮 -->
+            <a href="/" style="display: flex; align-items: center; text-decoration: none; color: inherit;" title="返回主页">
+                <img src="/static/picture/main.svg" alt="返回主页" style="width: 24px; height: 24px;">
+            </a>
+            <div class="logo">
+                <i class="fas fa-sticky-note"></i>
+                <span>Airi 笔记</span>
+            </div>
+        </div>
+        <button class="btn" id="newNoteBtn">
+            <i class="fas fa-plus"></i>
+            新建笔记
+        </button>
+    </header>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="搜索笔记标题或内容...">
+        <button class="btn" id="searchBtn">
+            <i class="fas fa-search"></i>
+            搜索
+        </button>
+        <button class="btn btn-outline" id="clearFilterBtn">
+            <i class="fas fa-times"></i>
+            清除筛选
+        </button>
+    </div>
+
+    <div class="main-layout">
+        <aside class="sidebar">
+            <h3><i class="fas fa-folder"></i> 分类</h3>
+            <ul class="category-list" id="categoryList">
+                <li class="active" data-category="all">
+                    <span>全部笔记</span>
+                    <span class="category-count" id="allCount">0</span>
+                </li>
+                <!-- 分类将通过JS动态生成 -->
+            </ul>
+
+            <h3><i class="fas fa-tags"></i> 标签</h3>
+            <ul class="tag-list" id="tagList">
+                <!-- 标签将通过JS动态生成 -->
+            </ul>
+        </aside>
+
+        <main class="content">
+            <div class="notes-grid" id="notesGrid">
+                <!-- 笔记卡片将通过JS动态生成 -->
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-sticky-note"></i>
+                    <h3>暂无笔记</h3>
+                    <p>点击"新建笔记"按钮创建你的第一个笔记</p>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- 笔记编辑模态框 -->
+<div class="modal" id="noteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">新建笔记</h2>
+            <button class="close-modal" id="closeModal">&times;</button>
+        </div>
+        <form id="noteForm">
+            <input type="hidden" id="noteId">
+            <div class="form-group">
+                <label for="noteTitle">标题</label>
+                <input type="text" id="noteTitle" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="noteCategory">分类</label>
+                <select id="noteCategory" class="form-control">
+                    <option value="未分类">未分类</option>
+                    <option value="编程">编程</option>
+                    <option value="生活">生活</option>
+                    <option value="学习">学习</option>
+                    <option value="工作">工作</option>
+                    <option value="娱乐">娱乐</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="noteTags">标签</label>
+                <div class="tags-input" id="tagsContainer">
+                    <input type="text" id="noteTags" class="tag-input" placeholder="输入标签后按回车">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="noteContent">内容</label>
+                <textarea id="noteContent" class="form-control" placeholder="支持Markdown格式..." required></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" id="cancelBtn">取消</button>
+                <button type="submit" class="btn" id="saveBtn">保存笔记</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal" id="deleteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">确认删除</h2>
+            <button class="close-modal" id="closeDeleteModal">&times;</button>
+        </div>
+        <p>确定要删除笔记 "<span id="deleteNoteTitle"></span>" 吗？此操作无法撤销。</p>
+        <div class="form-actions">
+            <button type="button" class="btn btn-outline" id="cancelDeleteBtn">取消</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+        </div>
+    </div>
+</div>
+
+<!-- 提示消息 -->
+<div class="toast" id="toast"></div>
+
+<script>
+    // 全局变量
+    let notes = [];
+    let currentFilter = { category: 'all', tag: null, search: '' };
+    let tags = new Set();
+    let categories = new Set(['未分类', '编程', '生活', '学习', '工作', '娱乐']);
+    let currentEditingNoteId = null;
+
+    // DOM元素
+    const notesGrid = document.getElementById('notesGrid');
+    const emptyState = document.getElementById('emptyState');
+    const noteModal = document.getElementById('noteModal');
+    const deleteModal = document.getElementById('deleteModal');
+    const noteForm = document.getElementById('noteForm');
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const categoryList = document.getElementById('categoryList');
+    const tagList = document.getElementById('tagList');
+    const tagsContainer = document.getElementById('tagsContainer');
+    const tagInput = document.getElementById('noteTags');
+    const toast = document.getElementById('toast');
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadNotes();
+        setupEventListeners();
+    });
+
+    // 设置事件监听器
+    function setupEventListeners() {
+        // 新建笔记按钮
+        document.getElementById('newNoteBtn').addEventListener('click', openNoteModal);
+
+        // 关闭模态框按钮
+        document.getElementById('closeModal').addEventListener('click', closeNoteModal);
+        document.getElementById('closeDeleteModal').addEventListener('click', closeDeleteModal);
+
+        // 取消按钮
+        document.getElementById('cancelBtn').addEventListener('click', closeNoteModal);
+        document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+
+        // 表单提交
+        noteForm.addEventListener('submit', saveNote);
+
+        // 搜索功能
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        // 标签输入
+        tagInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag(this.value.trim());
+                this.value = '';
+            }
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(e) {
+            if (e.target === noteModal) closeNoteModal();
+            if (e.target === deleteModal) closeDeleteModal();
+        });
+
+        const clearFilterBtn = document.getElementById('clearFilterBtn');
+        if (clearFilterBtn) {
+            clearFilterBtn.addEventListener('click', clearAllFilters);
+        }
+    }
+
+    // 清除所有筛选
+    function clearAllFilters() {
+        currentFilter = { category: 'all', tag: null, search: '' };
+        searchInput.value = '';
+
+        // 重置激活状态
+        document.querySelectorAll('.category-list li, .tag-list li').forEach(li => {
+            li.classList.remove('active');
+        });
+
+        // 激活"全部笔记"
+        const allNotesItem = document.querySelector('.category-list li[data-category="all"]');
+        if (allNotesItem) {
+            allNotesItem.classList.add('active');
+        }
+
+        updateUI();
+        showToast('已清除所有筛选', 'success');
+    }
+
+    // 加载笔记数据
+    async function loadNotes() {
+        try {
+            console.log('开始加载笔记...');
+            const response = await fetch('/api/notes');
+            console.log('响应状态:', response.status);
+
+            if (!response.ok) {
+                throw new Error(`获取笔记失败: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log('API响应:', result);
+
+            // 确保我们获取的是 data 字段中的数组
+            notes = result.data || [];
+            console.log('加载的笔记数量:', notes.length);
+
+            updateUI();
+            showToast('笔记加载成功', 'success');
+        } catch (error) {
+            console.error('Error loading notes:', error);
+            showToast('加载笔记失败: ' + error.message, 'error');
+            // 如果没有数据，显示空状态
+            notes = [];
+            updateUI();
+        }
+    }
+
+    // 更新UI
+    function updateUI() {
+        // 更新分类和标签
+        updateCategoriesAndTags();
+
+        // 过滤笔记
+        const filteredNotes = filterNotes();
+
+        // 更新笔记网格
+        renderNotes(filteredNotes);
+
+        // 更新空状态
+        emptyState.style.display = filteredNotes.length ? 'none' : 'block';
+    }
+
+    // 更新分类和标签
+    function updateCategoriesAndTags() {
+        // 收集所有分类和标签
+        categories.clear();
+        tags.clear();
+
+        categories.add('全部笔记');
+        notes.forEach(note => {
+            if (note.category) categories.add(note.category);
+            if (note.tags && Array.isArray(note.tags)) {
+                note.tags.forEach(tag => tags.add(tag));
+            }
+        });
+
+        // 更新分类列表
+        updateCategoryList();
+
+        // 更新标签列表
+        updateTagList();
+    }
+
+    // 更新分类列表
+    function updateCategoryList() {
+        // 保留"全部笔记"项
+        const allNotesItem = categoryList.querySelector('[data-category="all"]');
+        categoryList.innerHTML = '';
+        categoryList.appendChild(allNotesItem);
+
+        // 添加其他分类
+        Array.from(categories)
+            .filter(cat => cat !== '全部笔记')
+            .sort()
+            .forEach(category => {
+                const count = notes.filter(note => note.category === category).length;
+                const li = document.createElement('li');
+                li.dataset.category = category;
+                li.innerHTML = `
+                    <span>${category}</span>
+                    <span class="category-count">${count}</span>
+                `;
+                li.addEventListener('click', () => filterByCategory(category));
+                categoryList.appendChild(li);
+            });
+
+        // 更新全部笔记计数
+        document.getElementById('allCount').textContent = notes.length;
+    }
+
+    // 更新标签列表
+    function updateTagList() {
+        tagList.innerHTML = '';
+
+        Array.from(tags)
+            .sort()
+            .forEach(tag => {
+                const count = notes.filter(note =>
+                    note.tags && note.tags.includes(tag)
+                ).length;
+
+                const li = document.createElement('li');
+                li.dataset.tag = tag;
+                li.innerHTML = `
+                    <span>${tag}</span>
+                    <span class="tag-count">${count}</span>
+                `;
+                li.addEventListener('click', () => filterByTag(tag));
+                tagList.appendChild(li);
+            });
+    }
+
+    // 过滤笔记
+    function filterNotes() {
+        return notes.filter(note => {
+            // 分类过滤
+            if (currentFilter.category !== 'all' && note.category !== currentFilter.category) {
+                return false;
+            }
+
+            // 标签过滤
+            if (currentFilter.tag && (!note.tags || !note.tags.includes(currentFilter.tag))) {
+                return false;
+            }
+
+            // 搜索过滤
+            if (currentFilter.search) {
+                const searchLower = currentFilter.search.toLowerCase();
+                const titleMatch = note.title.toLowerCase().includes(searchLower);
+                const contentMatch = note.content.toLowerCase().includes(searchLower);
+
+                if (!titleMatch && !contentMatch) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    // 渲染笔记卡片
+    function renderNotes(notesToRender) {
+        notesGrid.innerHTML = '';
+
+        if (notesToRender.length === 0) {
+            notesGrid.appendChild(emptyState);
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        notesToRender.forEach(note => {
+            const noteCard = createNoteCard(note);
+            notesGrid.appendChild(noteCard);
+        });
+    }
+
+    // 创建笔记卡片
+    // 修改 createNoteCard 函数中的字段引用
+    function createNoteCard(note) {
+        const card = document.createElement('div');
+        card.className = 'note-card';
+
+        // 格式化日期 - 使用正确的字段名
+        const date = new Date(note.CreatedAt || note.createdAt || note.CreatedAt).toLocaleDateString('zh-CN');
+
+        // 预览内容（限制长度）
+        const contentPreview = note.content.length > 150
+            ? note.content.substring(0, 150) + '...'
+            : note.content;
+
+        // 使用正确的 ID 字段
+        const noteId = note.ID || note.id;
+
+        card.innerHTML = `
+            <div class="note-header">
+                <div>
+                    <h3 class="note-title">${note.title}</h3>
+                    <span class="note-category">${note.category || '未分类'}</span>
+                </div>
+            </div>
+            <div class="note-content">${contentPreview}</div>
+            <div class="note-tags">
+                ${note.tags && note.tags.map(tag =>
+                    `<span class="note-tag">${tag}</span>`
+                ).join('') || ''}
+            </div>
+            <div class="note-footer">
+                <span class="note-date">${date}</span>
+                <div class="note-actions">
+                    <button class="note-action edit-note" data-id="${noteId}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="note-action delete-note" data-id="${noteId}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // 添加事件监听器
+        card.querySelector('.edit-note').addEventListener('click', (e) => {
+            e.stopPropagation();
+            editNote(noteId);
+        });
+
+        card.querySelector('.delete-note').addEventListener('click', (e) => {
+            e.stopPropagation();
+            confirmDelete(noteId, note.title);
+        });
+
+        card.addEventListener('click', () => viewNote(noteId));
+
+        return card;
+    }
+
+    // 查看笔记
+    function viewNote(noteId) {
+        const note = notes.find(n => n.ID === noteId);
+        if (!note) return;
+
+        // 填充模态框
+        document.getElementById('modalTitle').textContent = note.title;
+        document.getElementById('noteTitle').value = note.title;
+        document.getElementById('noteCategory').value = note.category || '未分类';
+        document.getElementById('noteContent').value = note.content;
+
+        // 填充标签
+        clearTags();
+        if (note.tags && Array.isArray(note.tags)) {
+            note.tags.forEach(tag => addTag(tag));
+        }
+
+        // 设置编辑模式
+        currentEditingNoteId = noteId;
+        document.getElementById('noteId').value = noteId;
+        document.getElementById('saveBtn').textContent = '更新笔记';
+
+        // 显示模态框
+        noteModal.style.display = 'flex';
+    }
+
+    // 编辑笔记
+    function editNote(noteId) {
+        viewNote(noteId);
+    }
+
+    // 打开新建笔记模态框
+    function openNoteModal() {
+        // 重置表单
+        noteForm.reset();
+        clearTags();
+
+        // 设置新建模式
+        currentEditingNoteId = null;
+        document.getElementById('noteId').value = '';
+        document.getElementById('modalTitle').textContent = '新建笔记';
+        document.getElementById('saveBtn').textContent = '保存笔记';
+
+        // 显示模态框
+        noteModal.style.display = 'flex';
+    }
+
+    // 关闭笔记模态框
+    function closeNoteModal() {
+        noteModal.style.display = 'none';
+    }
+
+    // 保存笔记
+    async function saveNote(e) {
+        e.preventDefault();
+
+        const noteId = document.getElementById('noteId').value;
+        const title = document.getElementById('noteTitle').value.trim();
+        const category = document.getElementById('noteCategory').value;
+        const content = document.getElementById('noteContent').value.trim();
+
+        // 收集标签
+        const tagElements = tagsContainer.querySelectorAll('.tag');
+        const tags = Array.from(tagElements).map(tag => tag.textContent.replace('×', '').trim());
+
+        if (!title || !content) {
+            showToast('标题和内容不能为空', 'error');
+            return;
+        }
+
+        const noteData = {
+            title,
+            category,
+            content,
+            tags
+        };
+
+        try {
+            let response;
+            if (noteId) {
+                // 更新现有笔记
+                response = await fetch(`/api/notes/${noteId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(noteData)
+                });
+            } else {
+                // 创建新笔记
+                response = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(noteData)
+                });
+            }
+
+            if (!response.ok) throw new Error('保存笔记失败');
+
+            closeNoteModal();
+            await loadNotes(); // 重新加载笔记
+            showToast(noteId ? '笔记更新成功' : '笔记创建成功', 'success');
+        } catch (error) {
+            console.error('Error saving note:', error);
+            showToast('保存笔记失败', 'error');
+        }
+    }
+
+    // 确认删除笔记
+    function confirmDelete(noteId, noteTitle) {
+        document.getElementById('deleteNoteTitle').textContent = noteTitle;
+        document.getElementById('confirmDeleteBtn').dataset.id = noteId;
+        deleteModal.style.display = 'flex';
+    }
+
+    // 关闭删除确认模态框
+    function closeDeleteModal() {
+        deleteModal.style.display = 'none';
+    }
+
+    // 删除笔记
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+        const noteId = this.dataset.id;
+
+        try {
+            const response = await fetch(`/api/notes/${noteId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) throw new Error('删除笔记失败');
+
+            closeDeleteModal();
+            await loadNotes(); // 重新加载笔记
+            showToast('笔记删除成功', 'success');
+        } catch (error) {
+            console.error('Error deleting note:', error);
+            showToast('删除笔记失败', 'error');
+        }
+    });
+
+    // 添加标签
+    function addTag(tagText) {
+        if (!tagText) return;
+
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.innerHTML = `${tagText} <span class="tag-remove">×</span>`;
+
+        tag.querySelector('.tag-remove').addEventListener('click', function() {
+            tag.remove();
+        });
+
+        tagsContainer.insertBefore(tag, tagInput);
+    }
+
+    // 清除所有标签
+    function clearTags() {
+        const tags = tagsContainer.querySelectorAll('.tag');
+        tags.forEach(tag => tag.remove());
+    }
+
+    // 按分类过滤
+    function filterByCategory(category) {
+        console.log('按分类过滤:', category);
+
+        // 更新激活状态
+        document.querySelectorAll('.category-list li').forEach(li => {
+            li.classList.remove('active');
+        });
+
+        // 找到对应的分类项并激活
+        const categoryValue = category === '全部笔记' ? 'all' : category;
+        const targetLi = document.querySelector(`.category-list li[data-category="${categoryValue}"]`);
+        if (targetLi) {
+            targetLi.classList.add('active');
+            console.log('激活分类:', categoryValue);
+        } else {
+            console.log('未找到分类元素:', categoryValue);
+        }
+
+        currentFilter.category = categoryValue;
+        // 清除标签过滤，因为选择了分类
+        currentFilter.tag = null;
+
+        // 清除标签的激活状态
+        document.querySelectorAll('.tag-list li').forEach(li => {
+            li.classList.remove('active');
+        });
+
+        updateUI();
+    }
+
+    // 按标签过滤
+    function filterByTag(tag) {
+        console.log('按标签过滤:', tag);
+
+        // 更新激活状态
+        document.querySelectorAll('.tag-list li').forEach(li => {
+            li.classList.remove('active');
+        });
+
+        // 找到对应的标签项并激活
+        const targetLi = document.querySelector(`.tag-list li[data-tag="${tag}"]`);
+        if (targetLi) {
+            targetLi.classList.add('active');
+            console.log('激活标签:', tag);
+        } else {
+            console.log('未找到标签元素:', tag);
+        }
+
+        currentFilter.tag = tag;
+        updateUI();
+    }
+
+    // 执行搜索
+    function performSearch() {
+        currentFilter.search = searchInput.value.trim();
+        updateUI();
+    }
+
+    // 显示提示消息
+    function showToast(message, type = 'success') {
+        toast.textContent = message;
+        toast.className = 'toast';
+        toast.classList.add(type);
+        toast.classList.add('show');
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    // 模拟数据（用于演示，实际使用时删除）
+    function loadSampleData() {
+        notes = [
+            {
+                ID: 1,
+                title: "Go语言学习笔记",
+                content: "今天学习了Go语言的并发模型，goroutine和channel的使用方法...",
+                category: "编程",
+                tags: ["Go", "并发", "学习"],
+                createdAt: "2023-10-15T08:30:00Z",
+                updatedAt: "2023-10-15T08:30:00Z"
+            },
+            {
+                ID: 2,
+                title: "周末购物清单",
+                content: "1. 牛奶\n2. 鸡蛋\n3. 面包\n4. 水果",
+                category: "生活",
+                tags: ["购物", "清单"],
+                createdAt: "2023-10-14T16:45:00Z",
+                updatedAt: "2023-10-14T16:45:00Z"
+            },
+            {
+                ID: 3,
+                title: "项目会议记录",
+                content: "讨论了下一阶段的功能开发计划，确定了时间节点和负责人...",
+                category: "工作",
+                tags: ["会议", "项目"],
+                createdAt: "2023-10-13T14:20:00Z",
+                updatedAt: "2023-10-13T14:20:00Z"
+            }
+        ];
+        updateUI();
+    }
+</script>
+</body>
+</html>

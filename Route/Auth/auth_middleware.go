@@ -1,9 +1,9 @@
-package Route
+package Auth
 
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"platfrom/service"
+	"platfrom/service/Auth"
 	"strings"
 )
 
@@ -36,7 +36,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// 验证token
-		claims, err := service.ValidateToken(parts[1])
+		claims, err := Auth.ValidateToken(parts[1])
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "认证令牌无效或已过期",

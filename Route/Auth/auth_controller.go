@@ -1,16 +1,16 @@
-package Route
+package Auth
 
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"platfrom/database"
-	"platfrom/service"
+	"platfrom/service/Auth"
 	"time"
 )
 
 // 修改：删除全局变量，在函数中获取服务实例
-func getUserService() service.UserService {
-	return service.GlobalUserService
+func getUserService() Auth.UserService {
+	return Auth.GlobalUserService
 }
 
 // Register 用户注册
@@ -36,7 +36,7 @@ func Register(c *gin.Context) {
 	}
 
 	// 生成JWT令牌
-	token, err := service.GenerateToken(user.ID, user.Username)
+	token, err := Auth.GenerateToken(user.ID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "生成令牌失败",
@@ -81,7 +81,7 @@ func Login(c *gin.Context) {
 	}
 
 	// 验证密码
-	if !service.VerifyPassword(req.Password, user.PasswordHash) {
+	if !Auth.VerifyPassword(req.Password, user.PasswordHash) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "用户名或密码错误",
 		})
@@ -94,7 +94,7 @@ func Login(c *gin.Context) {
 	// 这里可以保存到数据库
 
 	// 生成JWT令牌
-	token, err := service.GenerateToken(user.ID, user.Username)
+	token, err := Auth.GenerateToken(user.ID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "生成令牌失败",

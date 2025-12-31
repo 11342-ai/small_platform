@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"platfrom/Config"
+	"platfrom/Route/Auth"
 	"platfrom/Route/LLM_Chat"
+	"platfrom/Route/Note"
 	"strings"
 	"time"
 )
@@ -35,23 +37,23 @@ func AuthRoute() {
 	api := r.Group("/api")
 
 	// 公开路由
-	api.POST("/register", Register)
-	api.POST("/login", Login)
-	api.POST("/logout", Logout)
+	api.POST("/register", Auth.Register)
+	api.POST("/login", Auth.Login)
+	api.POST("/logout", Auth.Logout)
 
 	// 验证码相关路由
-	api.POST("/auth/send-code", SendVerificationCode)
-	api.POST("/auth/verify-code", VerifyCode)
-	api.POST("/auth/reset-password", ResetPassword)
+	api.POST("/auth/send-code", Auth.SendVerificationCode)
+	api.POST("/auth/verify-code", Auth.VerifyCode)
+	api.POST("/auth/reset-password", Auth.ResetPassword)
 
 	// 需要认证的路由
 	auth := api.Group("/")
-	auth.Use(AuthMiddleware())
+	auth.Use(Auth.AuthMiddleware())
 
 	// 用户相关
 	{
-		auth.GET("/profile", GetProfile)
-		auth.POST("/update-password", UpdatePassword)
+		auth.GET("/profile", Auth.GetProfile)
+		auth.POST("/update-password", Auth.UpdatePassword)
 		auth.GET("/me", func(c *gin.Context) {
 			// 为前端提供更友好的用户信息端点
 			user, _ := c.Get("user_id")
@@ -68,7 +70,9 @@ func AuthRoute() {
 			auth.PUT("/user/apis/:id", LLM_Chat.UpdateUserAPI)
 			auth.DELETE("/user/apis/:id", LLM_Chat.DeleteUserAPI)
 		}
-		// 聊天相关路由
+
+		// = = = = = 聊天相关路由 = = = = =
+
 		chat := auth.Group("/chat")
 		{
 			chat.POST("/message", LLM_Chat.SendMessage)
@@ -93,6 +97,19 @@ func AuthRoute() {
 			files.DELETE("/:file_id", LLM_Chat.DeleteFile())
 		}
 
+		// 笔记管理路由
+		notes := auth.Group("/notes")
+		{
+			notes.GET("/", Note.GetNotes)
+			notes.GET("/:id", Note.GetNoteByID)
+			notes.POST("/", Note.CreateNote)
+			notes.PUT("/:id", Note.UpdateNote)
+			notes.DELETE("/:id", Note.DeleteNote)
+			notes.GET("/category/:category", Note.GetNotesByCategory)
+			notes.GET("/tag/:tag", Note.GetNotesByTag)
+			notes.GET("/search/:keyword", Note.SearchNotes)
+		}
+
 	}
 
 	r.GET("/", func(c *gin.Context) {
@@ -109,6 +126,10 @@ func AuthRoute() {
 
 	r.GET("/chat", func(c *gin.Context) {
 		c.File("./web/chat.html")
+	})
+
+	r.GET("/note", func(c *gin.Context) {
+		c.File("./web/note.html")
 	})
 
 	// 前端路由 - 支持SPA
