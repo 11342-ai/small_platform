@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 聊天</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 新增：引入 Marked.js 用于 Markdown 渲染 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- 新增：引入 Highlight.js 用于代码高亮 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.7.0/build/highlight.min.js"></script>
+    <link rel="stylesheet" href="/frontend/css/chat.css">
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <!-- 左侧边栏 -->
+        <div class="sidebar">
+            <div class="header">
+                <div class="header-content">
+                    <a href="/" class="home-link">
+                        <img src="/frontend/picture/main.svg" alt="主页" class="home-icon">
+                    </a>
+                    <h2>AI 聊天助手</h2>
+                </div>
+            </div>
+
+            <div class="model-selector">
+                <label for="model-select">选择模型:</label>
+                <select id="model-select" v-model="selectedModel">
+                    <option value="">请选择模型</option>
+                    <option v-for="model in models" :key="model.Name" :value="model.Name">
+                        {{ model.Name }} ({{ model.ModelKind }})
+                    </option>
+                </select>
+                <!-- 新增人格选择器 -->
+                <label for="persona-select">选择人格:</label>
+                <select id="persona-select" v-model="selectedPersona">
+                    <option value="">默认助手</option>
+                    <option v-for="persona in personas" :key="persona" :value="persona">
+                        {{ persona }}
+                    </option>
+                </select>
+
+                <button @click="createNewSession" :disabled="!selectedModel">新会话</button>
+            </div>
+
+            <div class="sessions-list">
+                <div v-if="sessions.length === 0" class="empty-state">
+                    <h3>暂无会话</h3>
+                    <p>选择一个模型并创建新会话开始聊天</p>
+                </div>
+                <div
+                        v-for="session in sessions"
+                        :key="session.ID"
+                        :class="['session-item', session.SessionID === sessionId ? 'active' : '']"
+                        @click="switchSession(session)"
+                >
+                    <div class="session-title">{{ session.Title || '新对话' }}</div>
+                    <div class="session-meta">
+                        <span>{{ session.MessageCount }} 条消息</span>
+                        <span>{{ formatDate(session.UpdatedAt) }}</span>
+                    </div>
+                    <div class="session-meta">
+                        <span>模型: {{ session.ModelName }}</span>
+                        <button
+                                class="delete-session"
+                                @click.stop="deleteSession(session.SessionID)"
+                                title="删除会话"
+                        >
+                            删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧主内容区 -->
+        <div class="main-content">
+
+            <!-- 修改消息显示部分 -->
+            <!-- 修改消息显示部分 -->
+            <div class="chat-container" ref="chatContainer">
+                <div v-if="sessionId && messages.length === 0" class="empty-state">
+                    <h3>开始对话</h3>
+                    <p>在下方输入消息开始与AI对话</p>
+                </div>
+                <div v-for="message in messages" :key="message.id"
+                     :class="['message', message.role === 'user' ? 'user-message' : 'ai-message']">
+                    <div :class="['message-bubble', message.role === 'user' ? 'user-bubble' : 'ai-bubble']">
+                        <!-- 用户消息保持原样显示 -->
+                        <template v-if="message.role === 'user'">
+                            <span style="white-space: pre-wrap;">{{ message.content }}</span>
+                        </template>
+                        <!-- AI 消息使用 Markdown 渲染 -->
+                        <template v-else>
+                            <div class="markdown-content" v-html="renderMarkdown(message.content)"></div>
+                        </template>
+                        <span v-if="message.streaming" class="cursor"></span>
+                    </div>
+                </div>
+                <div v-if="isTyping" class="message ai-message">
+                    <div class="typing-indicator">AI 正在思考<span class="cursor"></span></div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-group">
+                    <!-- 文件上传区域 -->
+                    <div class="file-upload-area">
+                        <input type="file" ref="fileInput" multiple
+                               accept=".txt,.py,.go,.c,.cpp,.h,.hpp,.js,.ts,.java,.html,.css,.md,.json,.xml,.yaml,.yml"
+                               @change="handleFileUpload" style="display: none">
+                        <button type="button" @click="triggerFileInput" :disabled="!sessionId || isTyping">
+                            选择文件
+                        </button>
+                        <div class="file-list" v-if="uploadedFiles.length > 0">
+                            <div v-for="file in uploadedFiles" :key="file.id" class="file-item">
+                                <span class="file-name">{{ file.name }}</span>
+                                <button type="button" @click="removeFile(file)" class="remove-file">×</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <textarea
+                            v-model="inputMessage"
+                            placeholder="输入你的消息... (按 Ctrl+Enter 发送)"
+                            @keydown.ctrl.enter="sendMessage"
+                            :disabled="!sessionId || isTyping"
+                            rows="3"
+                    ></textarea>
+                    <div class="button-group">
+                        <button
+                                @click="sendMessage"
+                                :disabled="!inputMessage && uploadedFiles.length === 0 || !sessionId || isTyping">
+                            发送
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="/frontend/js/chat.js"></script>
+
+</body>
+</html>

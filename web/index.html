@@ -320,6 +320,73 @@
             padding: 1rem 2rem;
             font-size: 1.1rem;
         }
+
+        /* 图标网格样式 */
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem 1rem;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .icon-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        .icon-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .icon-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1.5rem;
+                margin-top: 2rem;
+            }
+
+            .icon {
+                font-size: 2.5rem;
+            }
+
+            .icon-label {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .icon-grid {
+                grid-template-columns: 1fr;
+                max-width: 300px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -348,20 +415,28 @@
                 <h1 class="home-title">个人工具平台</h1>
                 <p class="home-subtitle">可以自主选择小工具</p>
 
-                <div v-if="!isAuthenticated" class="home-buttons">
-                    <a href="/login" class="btn btn-primary home-btn" @click.prevent="navigateTo('login')">
-                        <i class="bi bi-box-arrow-in-right"></i> 立即登录
+                <div v-if="!isAuthenticated" class="icon-grid">
+                    <a href="/login" class="icon-item" @click.prevent="navigateTo('login')">
+                        <i class="bi bi-box-arrow-in-right icon"></i>
+                        <span class="icon-label">立即登录</span>
                     </a>
-                    <a href="/register" class="btn btn-secondary home-btn" @click.prevent="navigateTo('register')">
-                        <i class="bi bi-person-plus"></i> 注册账号
+                    <a href="/register" class="icon-item" @click.prevent="navigateTo('register')">
+                        <i class="bi bi-person-plus icon"></i>
+                        <span class="icon-label">注册账号</span>
                     </a>
                 </div>
-                <div v-else class="home-buttons">
-                    <a href="/profile" class="btn btn-primary home-btn" @click.prevent="navigateTo('profile')">
-                        <i class="bi bi-person-circle"></i> 进入个人中心
+                <div v-else class="icon-grid">
+                    <a href="/chat" class="icon-item" data-external>
+                        <i class="bi bi-chat-left-text icon"></i>
+                        <span class="icon-label">AI 聊天</span>
                     </a>
-                    <a href="/api_keys" class="btn btn-secondary home-btn" data-external>
-                        <i class="bi bi-key"></i> API管理
+                    <a href="/profile" class="icon-item" @click.prevent="navigateTo('profile')">
+                        <i class="bi bi-person-circle icon"></i>
+                        <span class="icon-label">个人中心</span>
+                    </a>
+                    <a href="/api_keys" class="icon-item" data-external>
+                        <i class="bi bi-key icon"></i>
+                        <span class="icon-label">API 管理</span>
                     </a>
                 </div>
             </div>

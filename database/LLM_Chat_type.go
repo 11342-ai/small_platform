@@ -23,6 +23,17 @@ type FileUploadConfig struct {
 	AllowedExtensions []string `yaml:"allowed_extensions"`
 }
 
+type UploadedFile struct {
+	gorm.Model
+	SessionID   string `gorm:"index;not null"` // 关联的会话ID
+	FileName    string `gorm:"not null"`       // 原文件名
+	FilePath    string `gorm:"not null"`       // 存储路径
+	FileSize    int64  `gorm:"not null"`       // 文件大小
+	FileType    string `gorm:"not null"`       // 文件类型
+	Content     string `gorm:"type:text"`      // 文件内容（文本文件）
+	IsProcessed bool   `gorm:"default:false"`  // 是否已处理
+}
+
 // UserAPI 用户API配置
 type UserAPI struct {
 	gorm.Model
@@ -31,24 +42,25 @@ type UserAPI struct {
 	APIKey    string `gorm:"size:500;not null"` // 加密存储
 	ModelName string `gorm:"size:100"`
 	BaseURL   string `gorm:"size:500"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // ChatSession 聊天会话
 type ChatSession struct {
-	SessionID     string `gorm:"primaryKey;size:50"`
-	UserID        uint   `gorm:"index;not null"`
-	Title         string `gorm:"size:200"`
-	PersonaName   string `gorm:"size:100"`
-	LastMessageAt time.Time
-	MessageCount  int `gorm:"default:0"`
+	SessionID    string    `gorm:"primaryKey;size:50"`
+	UserID       uint      `gorm:"index;not null"`
+	Title        string    `gorm:"size:200"`
+	ModelName    string    `gorm:"not null;default:''"`
+	MessageCount int       `gorm:"default:0"`
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
 }
 
 // ChatMessage 聊天消息
 type ChatMessage struct {
 	gorm.Model
-	SessionID    string `gorm:"index;not null;size:50"`
-	UserID       uint   `gorm:"index;not null"`
-	Role         string `gorm:"size:20;not null"` // user, assistant, system
-	Content      string `gorm:"type:text"`
-	MessageOrder int    `gorm:"not null"`
+	SessionID string `gorm:"index;not null;size:50"`
+	Role      string `gorm:"size:20;not null"` // user, assistant, system
+	Content   string `gorm:"type:text"`
 }

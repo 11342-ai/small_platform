@@ -17,6 +17,15 @@ func main() {
 	// 初始化数据库
 	database.InitDB()
 
+	err := database.InitRedis("localhost:6379", "", 0)
+	if err != nil {
+		log.Printf("Redis初始化失败，程序将继续在降级模式下运行: %v", err)
+		_ = LLM_Chat.NewCacheService(nil, false)
+	} else {
+		log.Println("Redis初始化成功")
+		_ = LLM_Chat.NewCacheService(database.GetRedis(), true)
+	}
+
 	//启动验证码清理任务（只创建一次）
 	// 初始化 UserService（数据库已初始化后）
 	_ = service.NewUserService()
@@ -25,48 +34,42 @@ func main() {
 	}
 	service.GlobalUserService.StartCleanupTask()
 
-	_ = LLM_Chat.NewChatMessageService()
-	if LLM_Chat.GlobalChatMessageService == nil {
-		log.Fatal("Failed to initialize ChatMessageService")
-	}
-
-	_ = LLM_Chat.NewChatSessionService()
-	if LLM_Chat.GlobalChatSessionService == nil {
-		log.Fatal("Failed to initialize GlobalChatSessionService")
-	}
-
 	_ = LLM_Chat.NewUserAPIService()
 	if LLM_Chat.GlobalUserAPIService == nil {
 		log.Fatal("Failed to initialize GlobalUserAPIService")
 	}
 
-	// 初始化人格配置管理器
-	_ = LLM_Chat.NewPersonaConfigManager()
-	if LLM_Chat.GlobalConfigManager == nil {
-		log.Fatal("Failed to initialize GlobalConfigManager")
+	_ = LLM_Chat.NewChatService()
+	if LLM_Chat.GlobalChatService == nil {
+		log.Fatal("Failed to initialize GlobalChatService")
 	}
 
-	if err := LLM_Chat.GlobalConfigManager.LoadConfig("style.yaml"); err != nil {
-		// 如果配置文件不存在，记录警告但不终止程序，可以使用默认配置
-		log.Printf("Warning: Failed to load persona config: %v", err)
-		// 可以在这里创建默认配置或使用内置默认值
+	_ = LLM_Chat.NewFileService()
+	if LLM_Chat.GlobalFileService == nil {
+		log.Fatal("Failed to initialize GlobalFileService")
 	}
 
-	// 初始化文件上传配置管理器
-	_ = LLM_Chat.NewFileUploadConfigManager()
-	if LLM_Chat.GlobalFileUploadConfigManager == nil {
-		log.Fatal("Failed to initialize GlobalFileUploadConfigManager")
+	_ = LLM_Chat.NewLLMSession()
+	if LLM_Chat.GlobalLLMSession == nil {
+		log.Fatal("Failed to initialize GlobalLLMSession")
 	}
 
-	// 加载文件上传配置文件
-	if err := LLM_Chat.GlobalFileUploadConfigManager.LoadConfig("style.yaml"); err != nil {
-		// 如果配置文件不存在，记录警告但不终止程序
-		log.Printf("Warning: Failed to load file upload config: %v", err)
-		// 可以在这里设置默认配置
+	// 初始化人格配置
+	personaConfigs, err := LLM_Chat.LoadPersonaConfigs("style.yaml")
+	if err != nil {
+		log.Fatal("加载人格配置失败:", err)
+	}
+	_ = LLM_Chat.NewPersonaManager(personaConfigs)
+	if LLM_Chat.GlobalPersonaManager == nil {
+		log.Fatal("Failed to initialize GlobalPersonaManager")
 	}
 
-	// 初始化LLM服务
-	_ = LLM_Chat.NewLLMService()
+	_ = LLM_Chat.NewDefaultSessionCreator()
+	if LLM_Chat.GlobalDefaultSessionCreator == nil {
+		log.Fatal("Failed to initialize GlobalDefaultSessionCreator")
+	}
+
+	LLM_Chat.InitSessionManager(LLM_Chat.GlobalChatService, LLM_Chat.GlobalCacheService, LLM_Chat.GlobalUserAPIService, LLM_Chat.GlobalPersonaManager)
 
 	// 启动路由
 	log.Println("服务器启动中...")

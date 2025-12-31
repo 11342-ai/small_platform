@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"platfrom/Config"
+	"platfrom/Route/LLM_Chat"
 	"strings"
 	"time"
 )
@@ -57,15 +58,39 @@ func AuthRoute() {
 			c.JSON(http.StatusOK, gin.H{"user_id": user})
 		})
 
-		// = = = = = = = = = = = = = = =
+		// = = = = = = = 路由模型的配置 = = = = = = = =
 
 		{
-			auth.POST("/user/apis", CreateUserAPI)
-			auth.GET("/user/apis", GetUserAPIs)
-			auth.GET("/user/apis/first", GetFirstAvailableAPI)
-			auth.GET("/user/apis/:name", GetUserAPIByName)
-			auth.PUT("/user/apis/:id", UpdateUserAPI)
-			auth.DELETE("/user/apis/:id", DeleteUserAPI)
+			auth.POST("/user/apis", LLM_Chat.CreateUserAPI)
+			auth.GET("/user/apis", LLM_Chat.GetUserAPIs)
+			auth.GET("/user/apis/first", LLM_Chat.GetFirstAvailableAPI)
+			auth.GET("/user/apis/:name", LLM_Chat.GetUserAPIByName)
+			auth.PUT("/user/apis/:id", LLM_Chat.UpdateUserAPI)
+			auth.DELETE("/user/apis/:id", LLM_Chat.DeleteUserAPI)
+		}
+		// 聊天相关路由
+		chat := auth.Group("/chat")
+		{
+			chat.POST("/message", LLM_Chat.SendMessage)
+			chat.POST("/message/stream", LLM_Chat.SendMessageStream)
+			chat.POST("/session", LLM_Chat.CreateSession)
+			chat.GET("/sessions", LLM_Chat.GetSessions)
+			chat.GET("/sessions/:session_id/messages", LLM_Chat.GetSessionMessages)
+			chat.DELETE("/sessions/:session_id", LLM_Chat.DeleteSession)
+		}
+
+		// 人格管理路由
+		personas := auth.Group("/personas")
+		{
+			personas.GET("/", LLM_Chat.GetPersonas)
+		}
+
+		// 文件管理路由
+		files := auth.Group("/files")
+		{
+			files.POST("/upload", LLM_Chat.UploadFile())
+			files.GET("/session/:session_id", LLM_Chat.GetSessionFiles())
+			files.DELETE("/:file_id", LLM_Chat.DeleteFile())
 		}
 
 	}
@@ -80,6 +105,10 @@ func AuthRoute() {
 
 	r.GET("/api_keys", func(c *gin.Context) {
 		c.File("./web/api_keys.html")
+	})
+
+	r.GET("/chat", func(c *gin.Context) {
+		c.File("./web/chat.html")
 	})
 
 	// 前端路由 - 支持SPA

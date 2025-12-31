@@ -1,4 +1,4 @@
-package Route
+package LLM_Chat
 
 import (
 	"github.com/gin-gonic/gin"
