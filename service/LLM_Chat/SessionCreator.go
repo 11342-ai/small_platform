@@ -16,10 +16,9 @@ type DefaultSessionCreator struct{}
 
 var GlobalDefaultSessionCreator SessionCreatorInterface
 
-func NewDefaultSessionCreator() SessionCreatorInterface {
-	service := &DefaultSessionCreator{}
-	GlobalDefaultSessionCreator = service
-	return service
+// init 函数自动初始化（Go 的惯用法）
+func init() {
+	GlobalDefaultSessionCreator = &DefaultSessionCreator{}
 }
 
 func (d *DefaultSessionCreator) CreateSession(apiKey, systemPrompt, BaseUrl string, maxHistory int) LLMSessionInterface {

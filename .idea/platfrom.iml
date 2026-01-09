@@ -8,5 +8,9 @@
     <orderEntry type="library" name="sweetalert2" level="application" />
     <orderEntry type="library" name="bootstrap" level="application" />
     <orderEntry type="library" name="bootstrap-icons" level="application" />
+    <orderEntry type="library" name="highlight" level="application" />
+    <orderEntry type="library" name="highlight.js" level="application" />
+    <orderEntry type="library" name="marked" level="application" />
+    <orderEntry type="library" name="vue-router" level="application" />
   </component>
 </module>

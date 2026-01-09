@@ -7,7 +7,7 @@ import (
 )
 
 var RedisClient *redis.Client
-var RedisAvailable bool = false // 新增：标记Redis是否可用
+var RedisAvailable = false // 新增：标记Redis是否可用
 
 func InitRedis(addr, password string, db int) error {
 	RedisClient = redis.NewClient(&redis.Options{

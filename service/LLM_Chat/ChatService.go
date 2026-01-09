@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"platfrom/database"
-	"sync"
 )
 
 type ChatServiceInterface interface {
@@ -24,15 +23,19 @@ var GlobalChatService ChatServiceInterface
 
 type ChatSessionService struct {
 	db *gorm.DB
-	mu sync.RWMutex
 }
 
-func NewChatService() ChatServiceInterface {
+func NewChatService(db *gorm.DB) (ChatServiceInterface, error) {
+
+	if db == nil {
+		return nil, errors.New("数据库连接不能为空")
+	}
+
 	service := &ChatSessionService{
-		db: database.DB,
+		db,
 	}
 	GlobalChatService = service
-	return service
+	return service, nil
 }
 
 // CreateChatSession 创建聊天会话

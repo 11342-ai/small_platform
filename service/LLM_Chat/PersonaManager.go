@@ -1,6 +1,7 @@
 package LLM_Chat
 
 import (
+	"errors"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
@@ -33,17 +34,25 @@ type PersonaManager struct {
 
 var GlobalPersonaManager PersonaManagerInterface
 
-func NewPersonaManager(configs *PersonaConfigs) PersonaManagerInterface {
+func NewPersonaManager(configs *PersonaConfigs) (PersonaManagerInterface, error) {
+	if configs == nil {
+		return nil, errors.New("人格配置不能为空")
+	}
+
 	if len(configs.Personas) == 0 {
-		panic("至少需要配置一个人格")
+		return nil, errors.New("至少需要配置一个人格")
+	}
+
+	if configs.Personas[0].Name == "" {
+		return nil, errors.New("默认人格名称不能为空")
 	}
 
 	service := &PersonaManager{
 		configs:        configs,
-		defaultPersona: configs.Personas[0].Name, // 默认使用第一个
+		defaultPersona: configs.Personas[0].Name,
 	}
 	GlobalPersonaManager = service
-	return service
+	return service, nil
 }
 
 // LoadPersonaConfigs 从YAML文件加载人格配置

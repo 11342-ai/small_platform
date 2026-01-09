@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"platfrom/Config"
 	"platfrom/Route"
 	"platfrom/database"
@@ -13,10 +14,16 @@ import (
 func main() {
 
 	// 初始化配置
-	Config.InitConfig()
+	if err := Config.InitConfig(); err != nil {
+		log.Printf("配置初始化失败: %v", err)
+		os.Exit(1) // 只在 main 函数里决定是否退出
+	}
 
 	// 初始化数据库
-	database.InitDB()
+	if err := database.InitDB(); err != nil {
+		log.Printf("数据库初始化失败: %v", err)
+		os.Exit(1)
+	}
 
 	err := database.InitRedis("localhost:6379", "", 0)
 	if err != nil {
@@ -29,45 +36,46 @@ func main() {
 
 	//启动验证码清理任务（只创建一次）
 	// 初始化 UserService（数据库已初始化后）
-	_ = Auth.NewUserService()
+	_, _ = Auth.NewUserService(database.DB)
 	if Auth.GlobalUserService == nil {
-		log.Fatal("Failed to initialize UserService")
+		log.Printf("Failed to initialize UserService")
+		os.Exit(1)
 	}
 	Auth.GlobalUserService.StartCleanupTask()
 
-	_ = LLM_Chat.NewUserAPIService()
+	_, _ = LLM_Chat.NewUserAPIService(database.DB)
 	if LLM_Chat.GlobalUserAPIService == nil {
-		log.Fatal("Failed to initialize GlobalUserAPIService")
+		log.Printf("Failed to initialize GlobalUserAPIService")
+		os.Exit(1)
 	}
 
-	_ = LLM_Chat.NewChatService()
+	_, _ = LLM_Chat.NewChatService(database.DB)
 	if LLM_Chat.GlobalChatService == nil {
-		log.Fatal("Failed to initialize GlobalChatService")
+		log.Printf("Failed to initialize GlobalChatService")
+		os.Exit(1)
 	}
 
-	_ = LLM_Chat.NewFileService()
+	_, _ = LLM_Chat.NewFileService(database.DB)
 	if LLM_Chat.GlobalFileService == nil {
-		log.Fatal("Failed to initialize GlobalFileService")
-	}
-
-	_ = LLM_Chat.NewLLMSession()
-	if LLM_Chat.GlobalLLMSession == nil {
-		log.Fatal("Failed to initialize GlobalLLMSession")
+		log.Printf("Failed to initialize GlobalFileService")
+		os.Exit(1)
 	}
 
 	// 初始化人格配置
 	personaConfigs, err := LLM_Chat.LoadPersonaConfigs("style.yaml")
 	if err != nil {
-		log.Fatal("加载人格配置失败:", err)
+		log.Printf("加载人格配置失败:", err)
+		os.Exit(1)
 	}
-	_ = LLM_Chat.NewPersonaManager(personaConfigs)
+	_, _ = LLM_Chat.NewPersonaManager(personaConfigs)
 	if LLM_Chat.GlobalPersonaManager == nil {
-		log.Fatal("Failed to initialize GlobalPersonaManager")
+		log.Printf("Failed to initialize GlobalPersonaManager")
+		os.Exit(1)
 	}
 
-	_ = LLM_Chat.NewDefaultSessionCreator()
 	if LLM_Chat.GlobalDefaultSessionCreator == nil {
-		log.Fatal("Failed to initialize GlobalDefaultSessionCreator")
+		log.Printf("Failed to initialize GlobalDefaultSessionCreator")
+		os.Exit(1)
 	}
 
 	LLM_Chat.InitSessionManager(LLM_Chat.GlobalChatService, LLM_Chat.GlobalCacheService, LLM_Chat.GlobalUserAPIService, LLM_Chat.GlobalPersonaManager)

@@ -40,7 +40,7 @@ personas:
       
 
 file_upload:
-  upload_dir: "E:/procedure/Go/uploads"  # 自定义上传目录路径
+  upload_dir: "E:/procedure/Go/tmp/uploads"  # 自定义上传目录路径
   max_file_size: 10485760              # 最大文件大小（10MB）
   allowed_extensions:                   # 允许的文件扩展名
     - ".txt"

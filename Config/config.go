@@ -2,8 +2,8 @@ package Config
 
 import (
 	"errors"
+	"fmt"
 	"github.com/spf13/viper"
-	"log"
 )
 
 type Config struct {
@@ -15,7 +15,7 @@ type Config struct {
 
 var Cfg Config
 
-func InitConfig() {
+func InitConfig() error {
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")
@@ -29,16 +29,17 @@ func InitConfig() {
 	if err := viper.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if errors.As(err, &configFileNotFoundError) {
-			log.Println("配置文件未找到，使用环境变量")
+			return fmt.Errorf("配置文件未找到，使用环境变量")
 		}
 	}
 
 	if err := viper.Unmarshal(&Cfg); err != nil {
-		log.Fatal("解析配置失败:", err)
+		return fmt.Errorf("解析配置失败:", err)
 	}
 
 	// 必须配置项验证
 	if Cfg.SecretKey == "" {
-		log.Fatal("SECRET_KEY 必须配置")
+		return fmt.Errorf("SECRET_KEY 必须配置")
 	}
+	return nil
 }

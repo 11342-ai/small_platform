@@ -1,13 +1,13 @@
 package LLM_Chat
 
 import (
+	"errors"
 	"fmt"
 	"gorm.io/gorm"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"platfrom/database"
 	"strings"
-	"sync"
 )
 
 type FileServiceInterface interface {
@@ -24,16 +24,20 @@ var GlobalFileService FileServiceInterface
 // fileService 文件服务实现
 type FileService struct {
 	db *gorm.DB
-	mu sync.RWMutex
 }
 
 // NewFileService 创建新的文件服务
-func NewFileService() FileServiceInterface {
+func NewFileService(db *gorm.DB) (FileServiceInterface, error) {
+
+	if db == nil {
+		return nil, errors.New("数据库连接不能为空")
+	}
+
 	service := &FileService{
-		db: database.DB,
+		db,
 	}
 	GlobalFileService = service
-	return service
+	return service, nil
 }
 
 func (s *FileService) SaveFile(file *database.UploadedFile) error {
@@ -81,7 +85,7 @@ func (s *FileService) ProcessFileContent(file *database.UploadedFile) (string, e
 
 		// 否则从文件路径读取
 		if file.FilePath != "" {
-			content, err := ioutil.ReadFile(file.FilePath)
+			content, err := os.ReadFile(file.FilePath)
 			if err != nil {
 				return "", fmt.Errorf("读取文件内容失败: %v", err)
 			}

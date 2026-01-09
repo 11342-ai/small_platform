@@ -37,10 +37,15 @@ type userService struct {
 	db *gorm.DB
 }
 
-func NewUserService() UserService {
-	userService := &userService{db: database.DB}
+func NewUserService(db *gorm.DB) (UserService, error) {
+
+	if db == nil {
+		return nil, errors.New("数据库连接不能为空")
+	}
+
+	userService := &userService{db}
 	GlobalUserService = userService
-	return userService
+	return userService, nil
 }
 
 // CreateUser 创建用户

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"gorm.io/gorm"
 	"platfrom/database"
-	"sync"
 )
 
 // UserAPIServiceInterface 用户API配置服务接口
@@ -30,16 +29,20 @@ var GlobalUserAPIService UserAPIServiceInterface
 // userAPIService 用户API配置服务实现
 type userAPIService struct {
 	db *gorm.DB
-	mu sync.RWMutex
 }
 
 // NewUserAPIService 创建新的UserAPI服务
-func NewUserAPIService() UserAPIServiceInterface {
+func NewUserAPIService(db *gorm.DB) (UserAPIServiceInterface, error) {
+
+	if db == nil {
+		return nil, errors.New("数据库连接不能为空")
+	}
+
 	service := &userAPIService{
-		db: database.DB,
+		db,
 	}
 	GlobalUserAPIService = service
-	return service
+	return service, nil
 }
 
 // CreateAPI 创建新的API配置

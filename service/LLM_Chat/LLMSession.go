@@ -26,14 +26,6 @@ type AdvancedChatSession struct {
 	SessionID    string
 }
 
-var GlobalLLMSession LLMSessionInterface
-
-func NewLLMSession() LLMSessionInterface {
-	service := &AdvancedChatSession{}
-	GlobalLLMSession = service
-	return service
-}
-
 func NewAdvancedChatSession(apiKey, systemPrompt, BaseUrl string, maxHistory int) LLMSessionInterface {
 	config := openai.DefaultConfig(apiKey)
 	config.BaseURL = BaseUrl
@@ -45,7 +37,6 @@ func NewAdvancedChatSession(apiKey, systemPrompt, BaseUrl string, maxHistory int
 		SystemPrompt: systemPrompt,
 	}
 
-	GlobalLLMSession = session
 	return session
 }
 
@@ -60,7 +51,6 @@ func NewAdvancedChatSessionFromHistory(apiKey, systemPrompt, BaseUrl string, max
 		SystemPrompt: systemPrompt,
 	}
 
-	GlobalLLMSession = session
 	return session
 }
 

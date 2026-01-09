@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"log"
@@ -11,14 +12,15 @@ var (
 	err error
 )
 
-func InitDB() {
-	DB, err = gorm.Open(sqlite.Open("device.db"), &gorm.Config{})
+func InitDB() error {
+	DB, err = gorm.Open(sqlite.Open("E:/procedure/Go/tmp/device.db"), &gorm.Config{})
 	if err != nil {
-		log.Fatal("数据库连接失败:", err)
+		return fmt.Errorf("数据库连接失败: %w", err)
 	}
 	// 修复 chat_sessions 表的 model_name 列（如果存在迁移问题）
-	if err := fixChatSessionModelName(DB); err != nil {
-		log.Printf("警告: 修复 chat_sessions 表失败: %v", err)
+	err := fixChatSessionModelName(DB)
+	if err != nil {
+		return fmt.Errorf("警告: 修复 chat_sessions 表失败: %v", err)
 	}
 	// 自动迁移表结构
 	err = DB.AutoMigrate(
@@ -31,15 +33,16 @@ func InitDB() {
 		&Note{},
 	)
 	if err != nil {
-		log.Fatal("数据库迁移失败:", err)
+		return fmt.Errorf("数据库迁移失败:", err)
 	}
 
 	// 修复 chat_sessions 表的时间戳列
 	if err := fixChatSessionTimestamps(DB); err != nil {
-		log.Printf("警告: 修复 chat_sessions 表时间戳失败: %v", err)
+		return fmt.Errorf("警告: 修复 chat_sessions 表时间戳失败: %v", err)
 	}
 
 	log.Println("数据库连接成功")
+	return nil // ✅ 成功返回 nil
 }
 
 // fixChatSessionModelName 确保 chat_sessions 表有 model_name 列，且允许 NULL 或具有默认值
