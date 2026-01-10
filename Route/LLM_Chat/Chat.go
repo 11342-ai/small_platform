@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	LLM_Chat_Service "platfrom/service/LLM_Chat"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,7 +55,7 @@ func processFilesWithMessage(sessionID string, message string, fileIDs []uint) (
 	return message, nil
 }
 
-// 原有的同步消息发送（保持不变）
+// SendMessage 原有的同步消息发送（保持不变）
 func SendMessage(c *gin.Context) {
 	var request struct {
 		BaseUrl   string `json:"BaseUrl"`
@@ -128,7 +129,7 @@ func SendMessage(c *gin.Context) {
 	})
 }
 
-// 新增：流式发送消息
+// SendMessageStream 新增：流式发送消息
 func SendMessageStream(c *gin.Context) {
 	var request struct {
 		BaseUrl   string `json:"BaseUrl"`
@@ -286,30 +287,46 @@ func CreateSession(c *gin.Context) {
 	})
 }
 
-// getSessions 获取会话列表
+// GetSessions  获取会话列表
 func GetSessions(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "用户未认证",
-		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户未认证"})
 		return
 	}
 
-	sessions, err := LLM_Chat_Service.GetSessionManager().GetChatService().GetChatSessions(userID.(uint))
+	// 获取分页参数
+	page := 1
+	pageSize := 20
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if ps := c.Query("page_size"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 {
+			pageSize = parsed
+		}
+	}
+
+	sessions, total, err := LLM_Chat_Service.GetSessionManager().GetChatService().GetChatSessions(userID.(uint), page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "获取会话列表失败: " + err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取会话列表失败: " + err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": sessions,
+		"pagination": gin.H{
+			"page":        page,
+			"page_size":   pageSize,
+			"total":       total,
+			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+		},
 	})
 }
 
-// getSessionMessages 获取特定会话的消息
+// GetSessionMessages 获取特定会话的消息
 func GetSessionMessages(c *gin.Context) {
 	sessionID := c.Param("session_id")
 
@@ -326,7 +343,7 @@ func GetSessionMessages(c *gin.Context) {
 	})
 }
 
-// deleteSession 删除会话
+// DeleteSession 删除会话
 func DeleteSession(c *gin.Context) {
 	sessionID := c.Param("session_id")
 

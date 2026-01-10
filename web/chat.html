@@ -132,6 +132,34 @@
             cursor: not-allowed;
         }
 
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .pagination button {
+            padding: 5px 15px;
+            border: 1px solid #007bff;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pagination button:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            color: #666;
+        }
+
         /* 会话列表 */
         .sessions-list {
             flex: 1;
@@ -462,6 +490,7 @@
                         </option>
                     </select>
                     <label for="persona-select">选择人格:</label>
+
                     <select id="persona-select" v-model="selectedPersona">
                         <option value="">默认助手</option>
                         <option v-for="persona in personas" :key="persona" :value="persona">
@@ -470,6 +499,12 @@
                     </select>
 
                     <button @click="createNewSession" :disabled="!selectedModel">新会话</button>
+                </div>
+
+                <div class="pagination" v-if="totalPages > 0">
+                    <button @click="previousPage" :disabled="currentPage <= 1">上一页</button>
+                    <span>第 {{ currentPage }} / {{ totalPages }} 页 (共 {{ totalSessions }} 个会话)</span>
+                    <button @click="nextPage" :disabled="currentPage >= totalPages">下一页</button>
                 </div>
 
                 <div class="sessions-list">
@@ -720,13 +755,54 @@
                     }
                 };
 
+                // 添加分页状态
+                const currentPage = ref(1);
+                const pageSize = ref(20);
+                const totalSessions = ref(0);
+                const totalPages = ref(0);
+
                 // 获取会话列表
-                const fetchSessions = async () => {
+                const fetchSessions = async (page = 1) => {
                     try {
-                        const response = await axios.get(`${API_BASE}/chat/sessions`);
+                        const response = await axios.get(`${API_BASE}/chat/sessions`, {
+                            params: {
+                                page: page,
+                                page_size: pageSize.value
+                            }
+                        });
+
                         sessions.value = response.data.data;
+
+                        // 处理分页信息
+                        if (response.data.pagination) {
+                            currentPage.value = response.data.pagination.page;
+                            pageSize.value = response.data.pagination.page_size;
+                            totalSessions.value = response.data.pagination.total;
+                            totalPages.value = response.data.pagination.total_pages;
+                        }
                     } catch (error) {
                         console.error('获取会话列表失败:', error);
+                    }
+                };
+
+                // 上一页
+                const previousPage = () => {
+                    if (currentPage.value > 1) {
+                        fetchSessions(currentPage.value - 1);
+                    }
+                };
+
+                // 下一页
+                const nextPage = () => {
+                    if (currentPage.value < totalPages.value) {
+                        fetchSessions(currentPage.value + 1);
+                    }
+                };
+
+                // 跳转到指定页
+                const goToPage = (page) => {
+                    if (page >= 1 && page <= totalPages.value) {
+                        fetchSessions(page);
                     }
                 };
 
@@ -998,7 +1074,14 @@
                     triggerFileInput,
                     handleFileUpload,
                     removeFile,
-                    renderMarkdown
+                    renderMarkdown,
+                    currentPage,
+                    pageSize,
+                    totalSessions,
+                    totalPages,
+                    previousPage,
+                    nextPage,
+                    goToPage
                 };
             }
         }).mount('#app');

@@ -13,7 +13,7 @@ type ChatServiceInterface interface {
 	CreateChatSession(sessionID, modelName string, UserId uint) (*database.ChatSession, error)
 	SaveChatMessage(sessionID, role, content string, UserId uint) error
 	GetChatMessages(sessionID string) ([]openai.ChatCompletionMessage, error)
-	GetChatSessions(UserId uint) ([]database.ChatSession, error)
+	GetChatSessions(UserId uint, page, pageSize int) ([]database.ChatSession, int64, error) // 返回会话列表 + 总数
 	GetChatSession(sessionID string, UserId uint) (*database.ChatSession, error)
 	DeleteChatSession(sessionID string) error
 	UpdateSessionTitle(sessionID, title string) error
@@ -159,18 +159,38 @@ func (s *ChatSessionService) GetChatMessages(sessionID string) ([]openai.ChatCom
 }
 
 // GetChatSessions 获取指定用户的所有聊天会话
-func (s *ChatSessionService) GetChatSessions(UserId uint) ([]database.ChatSession, error) {
+func (s *ChatSessionService) GetChatSessions(UserId uint, page, pageSize int) ([]database.ChatSession, int64, error) {
 	if UserId == 0 {
-		return nil, errors.New("UserId 不能为空")
+		return nil, 0, errors.New("UserId 不能为空")
+	}
+
+	// 设置默认值和边界
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 { // 限制最大每页数量
+		pageSize = 20
 	}
 
 	var sessions []database.ChatSession
-	result := s.db.Where("user_id = ?", UserId).Order("updated_at DESC").Find(&sessions)
+	var total int64
+
+	// 先查总数
+	s.db.Model(&database.ChatSession{}).Where("user_id = ?", UserId).Count(&total)
+
+	// 再分页查询
+	offset := (page - 1) * pageSize
+	result := s.db.Where("user_id = ?", UserId).
+		Order("updated_at DESC").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&sessions)
+
 	if result.Error != nil {
-		return nil, result.Error
+		return nil, 0, result.Error
 	}
 
-	return sessions, nil
+	return sessions, total, nil
 }
 
 // GetChatSession 获取特定会话
