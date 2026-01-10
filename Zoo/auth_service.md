@@ -4,7 +4,7 @@
 
 **用户服务方面的**
 
-**数据库User**   
+**数据库User**
 &emsp;&emsp;用于存储用户**个人的信息**
 
 ```
@@ -48,8 +48,8 @@ type UserService interface {
 ```
 
 ```
-CreateUser ====》创建用户-->  对于那个表而言，只是一个插入操作而已  
-GetUserByUsername ====》通过用户名来寻找用户信息  
+CreateUser ====》创建用户-->  对于那个表而言，只是一个插入操作而已
+GetUserByUsername ====》通过用户名来寻找用户信息
 GetUserByID====》通过用户ID来寻找那个用户信息
 SendVerificationCode ====》模拟发送验证码的过程，目前只是打印在控制台而已
 VerifyCode ====》验证验证码
@@ -60,15 +60,15 @@ StartCleanupTask() ====》一个清理验证码的定时任务
 
 | 路由                   | 负责的功能           | 是否受保护 |
 |:---------------------|:----------------|:------|
-| /register            | 注册的路由           | 否     |
-| /login               | 登录的路由           | 否     |
-| /logout              | 推出登录的路由         | 否     |
-| /auth/send-code      | 验证时发送验证码请求的路由   | 否     |
-| /auth/verify-code    | 验证时填入验证码后路由     | 否     |
-| /auth/reset-password | 忘记密码的哪个路由       | 否     |
-| /profile             | 查看个人资料的路由       | 是     |
-| /update-password     | 更新个人密码的路由       | 是     |
-| /me                  | 为前端提供更友好的用户信息端点 | 是     |
+| /api/register            | 注册的路由           | 否     |
+| /api/login               | 登录的路由           | 否     |
+| /api/logout              | 推出登录的路由         | 否     |
+| /api/auth/send-code      | 验证时发送验证码请求的路由   | 否     |
+| /api/auth/verify-code    | 验证时填入验证码后路由     | 否     |
+| /api/auth/reset-password | 忘记密码的哪个路由       | 否     |
+| /api/profile             | 查看个人资料的路由       | 是     |
+| /api/update-password     | 更新个人密码的路由       | 是     |
+| /api/me                  | 为前端提供更友好的用户信息端点 | 是     |
 
 **数据库VerificationCode**
 &emsp;&emsp;用于存储用户**个人的信息**
@@ -129,49 +129,45 @@ BaseURL:例如https://api.deepseek.com/v1等
 &emsp;&emsp;这个主要是针对于那个用户个人api地增删改查而已
 
 ```
-// UserAPIService 用户API配置服务接口
-type UserAPIService interface {
+// UserAPIServiceInterface 用户API配置服务接口
+type UserAPIServiceInterface interface {
 	// API配置管理
 	CreateAPI(userID uint, api *database.UserAPI) (*database.UserAPI, error)
 	GetAPIByID(apiID uint) (*database.UserAPI, error)
 	GetAPIByName(userID uint, apiName string) (*database.UserAPI, error)
+	GetAPIByModelName(userID uint, modelName string) (*database.UserAPI, error)
 	GetUserAPIs(userID uint) ([]database.UserAPI, error)
 	UpdateAPI(apiID uint, updates map[string]interface{}) error
 	DeleteAPI(apiID uint) error
-	GetAPIBySession(sessionID string) (*database.UserAPI, error) ----》我个人认为这个不好，应该可以去除掉，毕竟这个小项目应该保持简洁 // 而且，那个获取session的api是不必要的，它应该是前端选择了配置后传给那个后端的对话，serssion库本身都没有这玩意
 
 	// API验证与选择
 	TestAPIConnection() (bool, error)
 	GetFirstAvailableAPI(userID uint) (*database.UserAPI, error)
-
-	// 统计
-	CountUserAPIs(userID uint) (int64, error)
 }
 ```
 
 ```
-CreateAPI====》根据那个用户ID等创建一个api而已
-GetAPIByID====>创建/插入用户自己地api
-GetAPIByName====》通过用户ID和那个api的名字来获取api的详细信息
-GetUserAPIs====》通过用户名来获取那个用户的全部api
-UpdateAPI====》用于更新那个用户api的名称
-DeleteAPI====》用于删除某一个api
-GetAPIBySession ====》根据那个对话id来获取那个api的配置
-TestAPIConnection ====》测试api的连接
-GetFirstAvailableAPI ====》获取用户第一个可用的API配置，就是一堆api当中第一个
-CountUserAPIs====》统计用户api的数量----》我个人认为这个不好，应该可以去除掉，毕竟这个小项目应该保持简洁
+CreateAPI ====》根据用户ID和API配置创建一个新的API记录
+GetAPIByID ====》根据API ID获取具体的API配置
+GetAPIByName ====》通过用户ID和API名称获取API的详细信息
+GetAPIByModelName ====》通过用户ID和模型名称获取对应的API配置（聊天时选择模型用）
+GetUserAPIs ====》获取用户的所有API配置列表
+UpdateAPI ====》更新API配置信息
+DeleteAPI ====》删除指定的API配置
+TestAPIConnection ====》测试API连接（简单实现，始终返回true）
+GetFirstAvailableAPI ====》获取用户第一个可用的API配置（用于下拉列表默认值）
 ```
 
-一个针对于用户管理自身api_key的页面路由编制//仅仅这是个简单的计划，用于确认服务的功能而已
+一个针对于用户管理自身api_key的页面路由编制//实际实现的路由
 
-| 路由   | 负责的功能                                               | 是否受保护 |
-|:-----|:----------------------------------------------------|:------|
-| /... | 用户创建api的路由                                          | 是     |
-| /... | 获取用户全部api                                           | 是     |
-| /... | 用户更新api的路由                                          | 是     |
-| /... | 用户删除单个api的路由路由                                      | 是     |
-| /... | 前端根据那个用户api的名字获取对应api的路由的详细消息，毕竟这个功能可能在那个对话页面当中要被使用 | 是     |
-| /... | 前端根据那个用户全部api的情况默认获取使用的api，例如下拉列表初始化时，就先调用这个临时顶着    | 是     |
+| 路由                          | 负责的功能                                       | 是否受保护 |
+|:----------------------------|:--------------------------------------------|:------|
+| /api/user/apis              | 创建新的API配置（POST）                           | 是     |
+| /api/user/apis              | 获取用户的所有API配置列表（GET）                     | 是     |
+| /api/user/apis/first        | 获取用户第一个可用的API配置（用于下拉列表默认值）（GET）   | 是     |
+| /api/user/apis/:name        | 根据API名称获取具体的API配置（GET）                  | 是     |
+| /api/user/apis/:id          | 更新API配置（PUT）                               | 是     |
+| /api/user/apis/:id          | 删除API配置（DELETE）                            | 是     |
 
 ********************************
 

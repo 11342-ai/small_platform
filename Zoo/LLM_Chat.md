@@ -97,22 +97,24 @@ Content: 对应的系统提示词内容（如 "你是一个有帮助的AI助手.
 type ChatServiceInterface interface {
 	CreateChatSession(sessionID, modelName string, UserId uint) (*database.ChatSession, error)
 	SaveChatMessage(sessionID, role, content string, UserId uint) error
-	GetChatMessages(sessionID string) ([]openai.ChatCompletionMessage, error)
-	GetChatSessions(UserId uint) ([]database.ChatSession, error)
+	GetChatMessages(sessionID string, cursor uint, limit int) ([]database.ChatMessage, uint, bool, error)
+	GetChatSessions(UserId uint, page, pageSize int) ([]database.ChatSession, int64, error)
 	GetChatSession(sessionID string, UserId uint) (*database.ChatSession, error)
 	DeleteChatSession(sessionID string) error
 	UpdateSessionTitle(sessionID, title string) error
+	GetRecentChatMessages(sessionID string, limit int) ([]openai.ChatCompletionMessage, error)
 }
 ```
 
 ```
 CreateChatSession ====》创建聊天会话，如果已存在则返回现有会话
 SaveChatMessage ====》保存一条聊天消息到数据库，并更新会话的消息计数
-GetChatMessages ====》获取指定会话的所有消息，按时间顺序返回
-GetChatSessions ====》获取指定用户的所有聊天会话列表，按更新时间倒序排列
+GetChatMessages ====》获取指定会话的消息（游标分页），返回消息列表、下一个游标、是否还有更多
+GetChatSessions ====》获取指定用户的聊天会话列表（页码分页），返回会话列表和总数
 GetChatSession ====》获取指定会话的详细信息（需验证用户权限）
 DeleteChatSession ====》删除聊天会话及其所有关联的消息（事务操作）
 UpdateSessionTitle ====》更新会话的标题
+GetRecentChatMessages ====》获取会话的最新N条消息（用于恢复会话状态）
 ```
 
 ```
@@ -229,8 +231,8 @@ GetAvailablePersonas ====》获取可用人格列表（委托给PersonaManager�
 | /api/chat/message             | 同步发送聊天消息                               | 是     |
 | /api/chat/message/stream      | 流式发送聊天消息（Server-Sent Events）           | 是     |
 | /api/chat/session             | 创建新聊天会话（自动生成会话ID）                     | 是     |
-| /api/chat/sessions            | 获取当前用户的所有聊天会话列表                       | 是     |
-| /api/chat/sessions/:session_id/messages | 获取指定会话的所有历史消息                  | 是     |
+| /api/chat/sessions            | 获取当前用户的聊天会话列表（支持页码分页：?page=1&page_size=20） | 是     |
+| /api/chat/sessions/:session_id/messages | 获取指定会话的历史消息（支持游标分页：?cursor=0&limit=30） | 是     |
 | /api/chat/sessions/:session_id | 删除指定会话（及其所有消息和文件）                    | 是     |
 
 **文件管理路由**
@@ -267,3 +269,4 @@ GetAvailablePersonas ====》获取可用人格列表（委托给PersonaManager�
 5.  **模型选择**：聊天时需指定`model_name`，后端通过`UserAPIService`查找用户对应的API配置（`api_key`和`base_url`）。
 6.  **默认行为**：若未指定人格，使用`style.yaml`中的第一个人格；若未指定`base_url`，使用API配置中存储的`BaseURL`。
 7.  **缓存策略**：会话信息、模型配置可缓存到Redis，提高响应速度；Redis不可用时自动降级到数据库。
+8.  **分页策略**：会话列表使用传统的页码分页（`page`, `page_size`参数），消息历史使用游标分页（`cursor`, `limit`参数）以实现无限滚动。

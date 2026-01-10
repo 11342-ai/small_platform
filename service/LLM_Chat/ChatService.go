@@ -12,11 +12,12 @@ import (
 type ChatServiceInterface interface {
 	CreateChatSession(sessionID, modelName string, UserId uint) (*database.ChatSession, error)
 	SaveChatMessage(sessionID, role, content string, UserId uint) error
-	GetChatMessages(sessionID string) ([]openai.ChatCompletionMessage, error)
+	GetChatMessages(sessionID string, cursor uint, limit int) ([]database.ChatMessage, uint, bool, error)
 	GetChatSessions(UserId uint, page, pageSize int) ([]database.ChatSession, int64, error) // 返回会话列表 + 总数
 	GetChatSession(sessionID string, UserId uint) (*database.ChatSession, error)
 	DeleteChatSession(sessionID string) error
 	UpdateSessionTitle(sessionID, title string) error
+	GetRecentChatMessages(sessionID string, limit int) ([]openai.ChatCompletionMessage, error)
 }
 
 var GlobalChatService ChatServiceInterface
@@ -136,26 +137,42 @@ func (s *ChatSessionService) updateSessionTitle(sessionID, content string) {
 }
 
 // GetChatMessages 获取会话的所有消息
-func (s *ChatSessionService) GetChatMessages(sessionID string) ([]openai.ChatCompletionMessage, error) {
+func (s *ChatSessionService) GetChatMessages(sessionID string, cursor uint, limit int) ([]database.ChatMessage, uint, bool, error) {
 	if sessionID == "" {
-		return nil, errors.New("sessionID 不能为空")
+		return nil, 0, false, errors.New("sessionID 不能为空")
+	}
+
+	// 设置默认值和上限
+	if limit <= 0 || limit > 100 {
+		limit = 50
 	}
 
 	var messages []database.ChatMessage
-	result := s.db.Where("session_id = ?", sessionID).Order("created_at").Find(&messages)
+	query := s.db.Where("session_id = ?", sessionID)
+
+	// 基于 ID 游标分页（获取比 cursor 更早的消息）
+	if cursor > 0 {
+		query = query.Where("id < ?", cursor)
+	}
+
+	// 按 ID 降序获取，这样最新的消息在前
+	result := query.Order("id DESC").Limit(limit).Find(&messages)
 	if result.Error != nil {
-		return nil, result.Error
+		return nil, 0, false, result.Error
 	}
 
-	chatMessages := make([]openai.ChatCompletionMessage, len(messages))
-	for i, msg := range messages {
-		chatMessages[i] = openai.ChatCompletionMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
-		}
+	// 反转消息顺序，使最早的消息在前
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
 	}
 
-	return chatMessages, nil
+	// 计算下一页 cursor（当前批次中最小的 ID）
+	var nextCursor uint = 0
+	if len(messages) > 0 {
+		nextCursor = messages[0].ID
+	}
+
+	return messages, nextCursor, len(messages) == limit, nil
 }
 
 // GetChatSessions 获取指定用户的所有聊天会话
@@ -239,4 +256,48 @@ func (s *ChatSessionService) UpdateSessionTitle(sessionID, title string) error {
 		Update("title", title)
 
 	return result.Error
+}
+
+// GetRecentChatMessages 获取会话的最新 N 条消息（用于恢复会话状态）
+func (s *ChatSessionService) GetRecentChatMessages(sessionID string, limit int) ([]openai.ChatCompletionMessage, error) {
+	if sessionID == "" {
+		return nil, errors.New("sessionID 不能为空")
+	}
+
+	// 设置默认值和上限
+	if limit <= 0 {
+		limit = 20 // 默认获取 20 条
+	}
+	if limit > 100 {
+		limit = 100 // 最大 100 条
+	}
+
+	var messages []database.ChatMessage
+	// 先按 ID 倒序获取最新的 limit 条
+	result := s.db.Where("session_id = ?", sessionID).
+		Order("id DESC").
+		Limit(limit).
+		Find(&messages)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	// 反转顺序，使消息按时间正序排列
+	// 检查是否有 nil 值
+	if messages == nil {
+		return []openai.ChatCompletionMessage{}, nil
+	}
+
+	chatMessages := make([]openai.ChatCompletionMessage, len(messages))
+	for i := 0; i < len(messages); i++ {
+		// 从后往前遍历，实现反转
+		msg := messages[len(messages)-1-i]
+		chatMessages[i] = openai.ChatCompletionMessage{
+			Role:    msg.Role,
+			Content: msg.Content,
+		}
+	}
+
+	return chatMessages, nil
 }

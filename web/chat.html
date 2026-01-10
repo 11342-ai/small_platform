@@ -330,6 +330,50 @@
             animation: blink 1s infinite;
         }
 
+        /* 加载更多指示器 */
+        .loading-more {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            gap: 10px;
+            color: #999;
+            font-size: 14px;
+            background-color: #fafafa;
+            border-bottom: 1px solid #eee;
+        }
+
+        .loading-more .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ddd;
+            border-top-color: #4CAF50;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 没有更多消息的提示 */
+        .no-more-messages {
+            text-align: center;
+            padding: 10px;
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        /* 聊天容器 */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            scroll-behavior: smooth;  /* 平滑滚动 */
+        }
+
         @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
@@ -545,6 +589,18 @@
                         <h3>开始对话</h3>
                         <p>在下方输入消息开始与AI对话</p>
                     </div>
+
+                    <!-- 加载更多指示器 -->
+                    <div v-if="isLoadingMore" class="loading-more">
+                        <div class="spinner"></div>
+                        <span>加载历史消息中...</span>
+                    </div>
+
+                    <!-- 没有更多消息的提示 -->
+                    <div v-else-if="!hasMoreMessages && messages.length > 0" class="no-more-messages">
+                        <span>已加载全部历史消息</span>
+                    </div>
+
                     <div v-for="message in messages" :key="message.id"
                          :class="['message', message.role === 'user' ? 'user-message' : 'ai-message']">
                         <div :class="['message-bubble', message.role === 'user' ? 'user-bubble' : 'ai-bubble']">
@@ -619,6 +675,13 @@
                 const selectedPersona = ref('');
                 const uploadedFiles = ref([]);
                 const fileInput = ref(null);
+
+                // === 新增：分页状态管理 ===
+                const messageCursor = ref(0);        // 当前游标（最后一条消息的ID）
+                const hasMoreMessages = ref(false);  // 是否还有更多消息
+                const isLoadingMore = ref(false);     // 是否正在加载更多
+                const isFirstLoad = ref(true);        // 是否首次加载
+                const MESSAGE_PAGE_SIZE = 30;        // 每页消息数量
 
                 const API_BASE = '/api';
 
@@ -807,10 +870,34 @@
                 };
 
                 // 获取特定会话的消息
-                const fetchSessionMessages = async (sessionID) => {
+                const fetchSessionMessages = async (sessionID, cursor = 0) => {
                     try {
-                        const response = await axios.get(`${API_BASE}/chat/sessions/${sessionID}/messages`);
-                        return response.data.data;
+                        const params = {
+                            limit: MESSAGE_PAGE_SIZE,
+                        };
+
+                        if (cursor > 0) {
+                            params.cursor = cursor;
+                        }
+
+                        const response = await axios.get(`${API_BASE}/chat/sessions/${sessionID}/messages`, {
+                            params
+                        });
+
+                        const newMessages = response.data.data;
+                        const nextCursor = response.data.cursor || 0;
+                        const hasMore = response.data.has_more || false;
+
+                        return {
+                            messages: newMessages.map((msg, index) => ({
+                                id: msg.id || Date.now() + index,  // 使用后端返回的ID
+                                role: msg.role,
+                                content: msg.content,
+                                streaming: false
+                            })),
+                            cursor: nextCursor,
+                            hasMore: hasMore
+                        };
                     } catch (error) {
                         console.error('获取会话消息失败:', error);
                         return [];
@@ -846,16 +933,24 @@
                     sessionId.value = session.SessionID;
                     selectedModel.value = session.ModelName;
 
-                    // 加载该会话的消息
-                    const sessionMessages = await fetchSessionMessages(session.SessionID);
-                    messages.value = sessionMessages.map((msg, index) => ({
-                        id: Date.now() + index,
-                        role: msg.role,
-                        content: msg.content,
-                        streaming: false
-                    }));
+                    // 重置分页状态
+                    messageCursor.value = 0;
+                    hasMoreMessages.value = false;
+                    isLoadingMore.value = false;
+                    isFirstLoad.value = true;
+                    messages.value = [];  // 清空当前消息
 
-                    scrollToBottom();
+                    // 首次加载：获取最新的 N 条消息
+                    const result = await fetchSessionMessages(session.SessionID);
+
+                    if (result.messages.length > 0) {
+                        messages.value = result.messages;
+                        messageCursor.value = result.cursor;
+                        hasMoreMessages.value = result.hasMore;
+                    }
+
+                    isFirstLoad.value = false;
+                    scrollToBottom();  // 滚动到底部（最新消息）
                 };
 
                 // 删除会话
@@ -878,6 +973,55 @@
                     } catch (error) {
                         console.error('删除会话失败:', error);
                         alert('删除会话失败: ' + (error.response?.data?.error || error.message));
+                    }
+                };
+
+                // 加载更多历史消息（向上滚动时触发）
+                const loadMoreMessages = async () => {
+                    if (!sessionId.value || isLoadingMore.value || !hasMoreMessages.value) {
+                        return;
+                    }
+
+                    isLoadingMore.value = true;
+
+                    // 获取第一条消息的 ID 作为游标
+                    const firstMessageId = messages.value[0]?.id || 0;
+
+                    if (firstMessageId === 0) {
+                        isLoadingMore.value = false;
+                        return;
+                    }
+
+                    const result = await fetchSessionMessages(sessionId.value, firstMessageId);
+
+                    if (result.messages.length > 0) {
+                        // 将新消息添加到数组前面
+                        messages.value = [...result.messages, ...messages.value];
+                        messageCursor.value = result.cursor;
+                        hasMoreMessages.value = result.hasMore;
+
+                        // 保存当前滚动位置
+                        const oldScrollHeight = chatContainer.value.scrollHeight;
+                        const oldScrollTop = chatContainer.value.scrollTop;
+
+                        // 等待 DOM 更新
+                        await nextTick();
+
+                        // 恢复滚动位置（减去新增内容的高度）
+                        const newScrollHeight = chatContainer.value.scrollHeight;
+                        chatContainer.value.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight);
+                    }
+
+                    isLoadingMore.value = false;
+                };
+
+                // 监听滚动事件，触发加载更多
+                const handleScroll = () => {
+                    if (!chatContainer.value) return;
+
+                    // 当滚动到顶部附近（50px以内）时，加载更多
+                    if (chatContainer.value.scrollTop < 50) {
+                        loadMoreMessages();
                     }
                 };
 
@@ -1044,6 +1188,13 @@
                     }
                 };
 
+                // 添加 beforeUnmount 清理监听器
+                const cleanup = () => {
+                    if (chatContainer.value) {
+                        chatContainer.value.removeEventListener('scroll', handleScroll);
+                    }
+                };
+
                 onMounted(() => {
                     fetchModels();
                     fetchSessions();
@@ -1051,6 +1202,12 @@
                     configureMarkdown();
                     // 调试：检查fileInput是否正确绑定
                     console.log('fileInput ref:', fileInput.value);
+
+                    // 添加滚动监听
+                    if (chatContainer.value) {
+                        chatContainer.value.addEventListener('scroll', handleScroll);
+                    }
+
                 });
 
                 return {
@@ -1062,6 +1219,13 @@
                     inputMessage,
                     isTyping,
                     chatContainer,
+
+                    // 新增的分页状态
+                    messageCursor,
+                    hasMoreMessages,
+                    isLoadingMore,
+                    loadMoreMessages,
+
                     createNewSession,
                     switchSession,
                     deleteSession,

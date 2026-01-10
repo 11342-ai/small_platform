@@ -112,7 +112,7 @@ func (sm *SessionManager) GetOrCreateSession(userID uint, sessionID, modelName, 
 	}
 
 	// 从数据库加载历史消息
-	existingMessages, err := sm.chatService.GetChatMessages(sessionID)
+	existingMessages, err := sm.chatService.GetRecentChatMessages(sessionID, 50)
 	if err != nil {
 		return nil, fmt.Errorf("加载历史消息失败: %v", err)
 	}

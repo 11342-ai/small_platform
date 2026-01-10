@@ -46,16 +46,16 @@ GetNotesByTag     根据标签筛选用户的笔记（使用LIKE查询JSON数组
 SearchNotes       根据关键词搜索笔记（标题和内容全文搜索，不区分大小写）
 ```
 
-| 路由                            | 方法   | 功能说明         | 是否受到保护 |
-|:------------------------------|:-----|:-------------|:-------|
-| /api/notes/                   | GET  | 获取当前用户的所...  | 是      |
-| /api/notes/:id                | GET  | 根据ID获取单个笔... | 是      |
-| /api/notes/                   | POST | 创建新笔记        | 是      |
-| /api/notes/:id                | PUT  | 更新指定笔记       | 是      |
-| /api/notes/:id                | D... | 删除指定笔记       | 是      |
-| /api/notes/category/:category | GET  | 根据分类获取笔记     | 是      |
-| /api/notes/tag/:tag           | GET  | 根据标签获取笔记     | 是      |
-| /api/notes/search/:keyword    | GET  | 搜索笔记（标题和...  | 是      |
+| 路由                            | 方法   | 功能说明                     | 是否受保护 |
+|:------------------------------|:-----|:--------------------------|:-------|
+| /api/notes/                   | GET  | 获取当前用户的所有笔记列表         | 是      |
+| /api/notes/:id                | GET  | 根据ID获取单个笔记详情          | 是      |
+| /api/notes/                   | POST | 创建新笔记                   | 是      |
+| /api/notes/:id                | PUT  | 更新指定笔记                  | 是      |
+| /api/notes/:id                | DELETE | 删除指定笔记                | 是      |
+| /api/notes/category/:category | GET  | 根据分类获取笔记               | 是      |
+| /api/notes/tag/:tag           | GET  | 根据标签获取笔记               | 是      |
+| /api/notes/search/:keyword    | GET  | 搜索笔记（标题和内容全文搜索）      | 是      |
 
 补充说明
 

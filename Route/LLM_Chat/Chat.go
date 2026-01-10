@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/sashabaranov/go-openai"
 	"net/http"
 	LLM_Chat_Service "platfrom/service/LLM_Chat"
 	"strconv"
@@ -326,11 +327,32 @@ func GetSessions(c *gin.Context) {
 	})
 }
 
+type PaginatedMessagesResponse struct {
+	Data       []openai.ChatCompletionMessage `json:"data"`
+	NextCursor uint                           `json:"next_cursor"`
+	HasMore    bool                           `json:"has_more"`
+	Total      int64                          `json:"total,omitempty"`
+}
+
+type MessageWithID struct {
+	ID      uint   `json:"id"`
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 // GetSessionMessages 获取特定会话的消息
 func GetSessionMessages(c *gin.Context) {
 	sessionID := c.Param("session_id")
 
-	messages, err := LLM_Chat_Service.GetSessionManager().GetChatService().GetChatMessages(sessionID)
+	// 从查询参数获取分页信息
+	cursorStr := c.DefaultQuery("cursor", "0")
+	limitStr := c.DefaultQuery("limit", "50")
+
+	cursor, _ := strconv.ParseUint(cursorStr, 10, 32)
+	limit, _ := strconv.Atoi(limitStr)
+
+	// 调用 ChatService 获取数据库消息
+	dbMessages, nextCursor, hasMore, err := LLM_Chat_Service.GetSessionManager().GetChatService().GetChatMessages(sessionID, uint(cursor), limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "获取消息失败: " + err.Error(),
@@ -338,8 +360,20 @@ func GetSessionMessages(c *gin.Context) {
 		return
 	}
 
+	// 转换为带 ID 的消息结构
+	messages := make([]MessageWithID, len(dbMessages))
+	for i, msg := range dbMessages {
+		messages[i] = MessageWithID{
+			ID:      msg.ID,
+			Role:    msg.Role,
+			Content: msg.Content,
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"data": messages,
+		"data":     messages,
+		"cursor":   nextCursor,
+		"has_more": hasMore,
 	})
 }
 
