@@ -181,19 +181,36 @@ func (s *userService) ResetPassword(username, code, newPassword string) error {
 		return err
 	}
 
-	// 更新密码
+	// 在事务中更新密码和清理验证码
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		return s.executePasswordResetTransaction(tx, user, username, code, hashedPassword)
+	})
+
+	return err
+}
+
+// executePasswordResetTransaction 在事务中执行密码重置相关的数据库操作
+func (s *userService) executePasswordResetTransaction(
+	tx *gorm.DB, user *database.User, username, code, hashedPassword string,
+) error {
+	// 1. 更新密码
 	user.PasswordHash = hashedPassword
-	if err := s.db.Save(user).Error; err != nil {
-		return err
+	if err := tx.Save(user).Error; err != nil {
+		return fmt.Errorf("更新密码失败: %w", err)
 	}
 
-	// 标记验证码为已使用
-	s.db.Model(&database.VerificationCode{}).
+	// 2. 标记验证码为已使用
+	if err := tx.Model(&database.VerificationCode{}).
 		Where("username = ? AND code = ?", username, code).
-		Update("used", true)
+		Update("used", true).Error; err != nil {
+		return fmt.Errorf("标记验证码失败: %w", err)
+	}
 
-	// 清理该用户的所有验证码
-	s.db.Where("username = ?", username).Delete(&database.VerificationCode{})
+	// 3. 清理该用户的所有验证码
+	if err := tx.Where("username = ?", username).
+		Delete(&database.VerificationCode{}).Error; err != nil {
+		return fmt.Errorf("清理验证码失败: %w", err)
+	}
 
 	return nil
 }

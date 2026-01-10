@@ -46,17 +46,21 @@ func (s *NoteService) UpdateNote(UserID uint, id uint, note *database.Note) erro
 		return errors.New("标题不能为空")
 	}
 
-	// 检查笔记是否存在
-	var existingNote database.Note
-	err := s.db.Where("user_id = ? AND id = ?", UserID, id).First(&existingNote, id).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("笔记不存在")
-		}
-		return err
+	// 直接更新，不需要先查询
+	result := s.db.Model(&database.Note{}).
+		Where("user_id = ? AND id = ?", UserID, id).
+		Updates(note)
+
+	if result.Error != nil {
+		return result.Error
 	}
 
-	return s.db.Model(&existingNote).Updates(note).Error
+	// 如果影响行数为 0，说明笔记不存在
+	if result.RowsAffected == 0 {
+		return errors.New("笔记不存在或无权限修改")
+	}
+
+	return nil
 }
 
 // DeleteNote 删除笔记

@@ -11,6 +11,11 @@ type Config struct {
 	DatabaseURL string `mapstructure:"DATABASE_URL"`
 	SecretKey   string `mapstructure:"SECRET_KEY"`
 	TokenExpiry int    `mapstructure:"TOKEN_EXPIRY_MINUTES"`
+
+	RedisHost     string `mapstructure:"REDIS_HOST"`
+	RedisPort     string `mapstructure:"REDIS_PORT"`
+	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
+	RedisDB       int    `mapstructure:"REDIS_DB"`
 }
 
 var Cfg Config
@@ -25,6 +30,11 @@ func InitConfig() error {
 	viper.SetDefault("SERVER_PORT", "8000")
 	viper.SetDefault("DATABASE_URL", "sqlite://k12_platform.db")
 	viper.SetDefault("TOKEN_EXPIRY_MINUTES", 1440) // 24小时
+
+	viper.SetDefault("REDIS_HOST", "localhost")
+	viper.SetDefault("REDIS_PORT", "6379")
+	viper.SetDefault("REDIS_PASSWORD", "")
+	viper.SetDefault("REDIS_DB", 0)
 
 	if err := viper.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError

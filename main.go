@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"platfrom/Config"
@@ -25,7 +26,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := database.InitRedis("localhost:6379", "", 0)
+	redisAddr := fmt.Sprintf("%s:%s", Config.Cfg.RedisHost, Config.Cfg.RedisPort)
+	fmt.Println(redisAddr)
+	err := database.InitRedis(redisAddr, Config.Cfg.RedisPassword, Config.Cfg.RedisDB)
 	if err != nil {
 		log.Printf("Redis初始化失败，程序将继续在降级模式下运行: %v", err)
 		_ = LLM_Chat.NewCacheService(nil, false)
@@ -64,7 +67,7 @@ func main() {
 	// 初始化人格配置
 	personaConfigs, err := LLM_Chat.LoadPersonaConfigs("style.yaml")
 	if err != nil {
-		log.Printf("加载人格配置失败:", err)
+		log.Printf("加载人格配置失败:%s", err)
 		os.Exit(1)
 	}
 	_, _ = LLM_Chat.NewPersonaManager(personaConfigs)

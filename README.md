@@ -21,3 +21,16 @@
 -  全局变量滥用： GlobalUserService、GlobalChatService、GlobalLLMSession 等全局变量满天飞,使得单元测试困难（无法 mock 依赖）
 -  错误处理粗糙： 很多地方直接 log.Fatal 一了百了，我后面返回错误让上层决定如何处理，而不是直接杀进程。
 -  那个笔记功能的那个index.html当中忘记加上去的按钮
+
+# v-3.3
+
+这个，我改进了以下几个问题：
+
+**数据库事务处理不足** 
+比如删除会话时需要同时删除消息（ChatService.goL176-L194），如果中间步骤失败可能导致数据不一致，应该用事务包裹。
+- User_service.go的 ResetPassword 方法：用 GORM 的事务包裹这三个操作，要么全成功，要么全回滚。
+- Note_Service.go的 UpdateNote 方法：我感觉不需要先查询笔记是否存在，直接带条件更新就行。如果笔记不存在，RowsAffected 会是 0
+- ChatService.go的 SaveChatMessage：核心操作用事务，非关键操作允许失败，我这样子修改的理由：消息 + 计数：强一致性，因为 message_count 是核心统计数据  //  标题更新：最终一致性，因为标题只是展示优化，失败了用户也能用  //  性能和一致性平衡：事务范围最小化，只保护关键数据
+
+**配置硬编码**
+main.goL22 里 localhost:6379 直接写死，虽然我用了 Config.InitConfig()，但 Redis 配置应该也走配置文件。

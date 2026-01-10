@@ -78,48 +78,61 @@ func (s *ChatSessionService) SaveChatMessage(sessionID, role, content string, Us
 		return errors.New("sessionID, role 和 content 不能为空")
 	}
 
-	message := &database.ChatMessage{
-		SessionID: sessionID,
-		Role:      role,
-		Content:   content,
-	}
-
-	result := s.db.Create(message)
-	if result.Error != nil {
-		return result.Error
-	}
-
-	// 更新会话的消息计数
-	updateResult := s.db.Model(&database.ChatSession{}).
-		Where("session_id = ? AND user_id = ?", sessionID, UserId).
-		Updates(map[string]interface{}{
-			"message_count": gorm.Expr("message_count + ?", 1),
-			"updated_at":    gorm.Expr("CURRENT_TIMESTAMP"),
-		})
-	if updateResult.Error != nil {
-		log.Printf("更新消息计数失败: %v", updateResult.Error)
-	}
-
-	// 如果这是第一条用户消息，自动生成标题
-	if role == "user" {
-		var messageCount int64
-		s.db.Model(&database.ChatMessage{}).
-			Where("session_id = ? AND role = ?", sessionID, "user").
-			Count(&messageCount)
-
-		if messageCount == 1 {
-			// 使用用户的第一条消息作为标题（截断）
-			title := content
-			if len(title) > 50 {
-				title = title[:50] + "..."
-			}
-			s.db.Model(&database.ChatSession{}).
-				Where("session_id = ?", sessionID).
-				Update("title", title)
+	// 事务：创建消息 + 更新计数（这两个必须保证一致性）
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 创建消息
+		message := &database.ChatMessage{
+			SessionID: sessionID,
+			Role:      role,
+			Content:   content,
 		}
+		if err := tx.Create(message).Error; err != nil {
+			return fmt.Errorf("创建消息失败: %w", err)
+		}
+
+		// 2. 更新会话的消息计数
+		if err := tx.Model(&database.ChatSession{}).
+			Where("session_id = ? AND user_id = ?", sessionID, UserId).
+			Updates(map[string]interface{}{
+				"message_count": gorm.Expr("message_count + ?", 1),
+				"updated_at":    gorm.Expr("CURRENT_TIMESTAMP"),
+			}).Error; err != nil {
+			return fmt.Errorf("更新消息计数失败: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// 非事务：更新标题（允许失败，不影响消息保存）
+	if role == "user" {
+		go s.updateSessionTitle(sessionID, content)
 	}
 
 	return nil
+}
+
+// updateSessionTitle 更新会话标题（异步，允许失败）
+func (s *ChatSessionService) updateSessionTitle(sessionID, content string) {
+	var messageCount int64
+	s.db.Model(&database.ChatMessage{}).
+		Where("session_id = ? AND role = ?", sessionID, "user").
+		Count(&messageCount)
+
+	if messageCount == 1 {
+		title := content
+		if len(title) > 50 {
+			title = title[:50] + "..."
+		}
+		if err := s.db.Model(&database.ChatSession{}).
+			Where("session_id = ?", sessionID).
+			Update("title", title).Error; err != nil {
+			log.Printf("更新标题失败 (session: %s): %v", sessionID, err)
+		}
+	}
 }
 
 // GetChatMessages 获取会话的所有消息
