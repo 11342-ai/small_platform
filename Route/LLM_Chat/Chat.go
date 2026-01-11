@@ -1,11 +1,15 @@
 package LLM_Chat
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sashabaranov/go-openai"
+	"log"
 	"net/http"
+	"platfrom/database"
 	LLM_Chat_Service "platfrom/service/LLM_Chat"
 	"strconv"
 	"strings"
@@ -182,6 +186,9 @@ func SendMessageStream(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+
 	// 设置响应头为流式传输
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
@@ -191,11 +198,31 @@ func SendMessageStream(c *gin.Context) {
 	c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 	c.Writer.Flush()
 
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Fprintf(c.Writer, ": heartbeat\n\n")
+				c.Writer.Flush()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	// 用于保存完整的AI回复
 	var fullResponse string
 
 	// 使用流式发送消息（使用包含文件内容的完整消息）
-	fullResponse, err = session.SendMessageStream(fullMessage, func(chunk string) error {
+	fullResponse, err = session.SendMessageStream(ctx, fullMessage, func(chunk string) error {
+
+		if err := LLM_Chat_Service.GlobalCacheService.AppendStreamResponse(request.SessionID, chunk); err != nil {
+			log.Printf("缓存流式响应失败: %v", err)
+		}
+
 		// 构建SSE格式的数据
 		data := map[string]interface{}{
 			"content": chunk,
@@ -210,6 +237,11 @@ func SendMessageStream(c *gin.Context) {
 		// 发送SSE格式数据
 		fmt.Fprintf(c.Writer, "data: %s\n\n", jsonData)
 		c.Writer.Flush()
+
+		if c.Request.Context().Err() != nil {
+			// 客户端已断开，停止发送
+			return errors.New("client disconnected")
+		}
 
 		return nil
 	})
@@ -226,8 +258,17 @@ func SendMessageStream(c *gin.Context) {
 		return
 	}
 
-	// 保存AI回复到数据库
-	if err := LLM_Chat_Service.GetSessionManager().SaveMessage(request.SessionID, "assistant", fullResponse, userID.(uint)); err != nil {
+	cacheResponse, redisErr := LLM_Chat_Service.GlobalCacheService.GetStreamResponse(request.SessionID)
+	if redisErr == nil && cacheResponse != "" {
+		fullResponse = cacheResponse
+		log.Printf("从 Redis 缓存恢复完整响应，长度: %d", len(fullResponse))
+		log.Printf("缓冲统计 - SessionID: %s, Redis可用: %v, 缓冲长度: %d", request.SessionID, database.IsRedisAvailable(), len(fullResponse))
+	} else if redisErr != nil {
+		log.Printf("Redis 获取失败，使用内存变量: %v", redisErr)
+	}
+
+	// 保存AI回复到数据库（带重试）
+	if err := LLM_Chat_Service.GlobalCacheService.SaveWithRetry(request.SessionID, "assistant", fullResponse, userID.(uint), 3); err != nil {
 		errorData := map[string]interface{}{
 			"error": "保存AI回复失败: " + err.Error(),
 			"done":  true,
@@ -235,7 +276,15 @@ func SendMessageStream(c *gin.Context) {
 		jsonData, _ := json.Marshal(errorData)
 		fmt.Fprintf(c.Writer, "data: %s\n\n", jsonData)
 		c.Writer.Flush()
+
+		// 👇 新增：清理 Redis 缓存
+		LLM_Chat_Service.GlobalCacheService.DeleteStreamResponse(request.SessionID)
 		return
+
+		// 👇 新增：保存成功后清理 Redis 缓存
+		if err := LLM_Chat_Service.GlobalCacheService.DeleteStreamResponse(request.SessionID); err != nil {
+			log.Printf("清理 Redis 缓存失败: %v", err)
+		}
 	}
 
 	// 发送结束信号
@@ -248,7 +297,23 @@ func SendMessageStream(c *gin.Context) {
 	c.Writer.Flush()
 }
 
-// createSession 创建新会话
+// RecoverStreamResponse :前端断连重连
+func RecoverStreamResponse(c *gin.Context) {
+	sessionID := c.Query("session_id")
+
+	cached, err := LLM_Chat_Service.GlobalCacheService.GetStreamResponse(sessionID)
+	if err != nil || cached == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "无缓存的响应"})
+		return
+	}
+	log.Printf("恢复成功 - SessionID: %s, Redis可用: %v, 缓冲长度: %d", sessionID, database.IsRedisAvailable(), len(cached))
+
+	c.JSON(http.StatusOK, gin.H{
+		"cached_response": cached,
+	})
+}
+
+// CreateSession 创建新会话
 func CreateSession(c *gin.Context) {
 	var request struct {
 		BaseUrl   string `json:"BaseUrl"`

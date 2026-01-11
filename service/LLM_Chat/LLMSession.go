@@ -13,7 +13,7 @@ type LLMSessionInterface interface {
 	SetSessionID(sessionID string)
 	GetMessages() []openai.ChatCompletionMessage
 	SendMessage(message string) (string, error)
-	SendMessageStream(message string, onChunk func(chunk string) error) (string, error)
+	SendMessageStream(ctx context.Context, message string, onChunk func(chunk string) error) (string, error)
 	SetSystemPrompt(prompt string)
 }
 
@@ -111,7 +111,7 @@ func (s *AdvancedChatSession) SendMessage(message string) (string, error) {
 }
 
 // SendMessageStream 新增：流式发送消息
-func (s *AdvancedChatSession) SendMessageStream(message string, onChunk func(chunk string) error) (string, error) {
+func (s *AdvancedChatSession) SendMessageStream(ctx context.Context, message string, onChunk func(chunk string) error) (string, error) {
 	// 添加用户消息
 	s.Messages = append(s.Messages, openai.ChatCompletionMessage{
 		Role:    "user",
@@ -139,7 +139,7 @@ func (s *AdvancedChatSession) SendMessageStream(message string, onChunk func(chu
 		Stream:   true,
 	}
 
-	stream, err := s.Client.CreateChatCompletionStream(context.Background(), req)
+	stream, err := s.Client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
 		s.Messages = s.Messages[:len(s.Messages)-1] // 移除失败的用户消息
 		return "", fmt.Errorf("ChatCompletionStream error: %v", err)

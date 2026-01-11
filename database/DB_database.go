@@ -33,7 +33,7 @@ func InitDB() error {
 		&Note{},
 	)
 	if err != nil {
-		return fmt.Errorf("数据库迁移失败:", err)
+		return fmt.Errorf("数据库迁移失败:%s", err)
 	}
 
 	// 修复 chat_sessions 表的时间戳列

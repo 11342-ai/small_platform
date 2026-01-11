@@ -81,6 +81,7 @@ func AuthRoute() {
 			chat.GET("/sessions", LLM_Chat.GetSessions)
 			chat.GET("/sessions/:session_id/messages", LLM_Chat.GetSessionMessages)
 			chat.DELETE("/sessions/:session_id", LLM_Chat.DeleteSession)
+			chat.GET("/recover", LLM_Chat.RecoverStreamResponse)
 		}
 
 		// 人格管理路由

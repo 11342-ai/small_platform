@@ -44,7 +44,7 @@ func InitConfig() error {
 	}
 
 	if err := viper.Unmarshal(&Cfg); err != nil {
-		return fmt.Errorf("解析配置失败:", err)
+		return fmt.Errorf("解析配置失败:%s", err)
 	}
 
 	// 必须配置项验证

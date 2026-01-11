@@ -109,12 +109,12 @@ type ChatServiceInterface interface {
 ```
 CreateChatSession ====》创建聊天会话，如果已存在则返回现有会话
 SaveChatMessage ====》保存一条聊天消息到数据库，并更新会话的消息计数
-GetChatMessages ====》获取指定会话的消息（游标分页），返回消息列表、下一个游标、是否还有更多
+GetChatMessages ====》获取指定会话的消息（基于ID的游标分页），cursor为0时获取最新消息，返回消息列表（按时间正序排列）、下一个游标（当前批次最小ID用于获取更早消息）、是否还有更多（当返回消息数等于limit时）、错误
 GetChatSessions ====》获取指定用户的聊天会话列表（页码分页），返回会话列表和总数
 GetChatSession ====》获取指定会话的详细信息（需验证用户权限）
 DeleteChatSession ====》删除聊天会话及其所有关联的消息（事务操作）
 UpdateSessionTitle ====》更新会话的标题
-GetRecentChatMessages ====》获取会话的最新N条消息（用于恢复会话状态）
+GetRecentChatMessages ====》获取会话的最新N条消息（用于恢复会话状态），返回openai.ChatCompletionMessage类型消息（按时间正序排列），可直接加载到LLMSession中
 ```
 
 ```
@@ -122,7 +122,7 @@ type LLMSessionInterface interface {
 	SetSessionID(sessionID string)
 	GetMessages() []openai.ChatCompletionMessage
 	SendMessage(message string) (string, error)
-	SendMessageStream(message string, onChunk func(chunk string) error) (string, error)
+	SendMessageStream(ctx context.Context, message string, onChunk func(chunk string) error) (string, error)
 	SetSystemPrompt(prompt string)
 }
 ```
@@ -131,7 +131,7 @@ type LLMSessionInterface interface {
 SetSessionID ====》设置会话ID（用于关联数据库记录）
 GetMessages ====》获取当前内存中的消息历史
 SendMessage ====》同步发送消息到AI模型并返回完整响应
-SendMessageStream ====》流式发送消息，支持实时返回响应片段
+SendMessageStream ====》流式发送消息，支持实时返回响应片段和上下文控制
 SetSystemPrompt ====》设置系统提示词（用于切换人格）
 ```
 
@@ -199,6 +199,12 @@ type CacheServiceInterface interface {
 	CacheModelConfig(modelName string, model *database.UserAPI) error
 	CacheFullSession(sessionID string, cachedSession *CachedSession, expiration time.Duration) error
 	GetCachedFullSession(sessionID string) (*CachedSession, error)
+
+	// AppendStreamResponse 新增：流式响应缓存相关
+	AppendStreamResponse(sessionID string, chunk string) error                               // 增量追加数据
+	GetStreamResponse(sessionID string) (string, error)                                      // 获取完整响应
+	DeleteStreamResponse(sessionID string) error                                             // 删除缓存
+	SaveWithRetry(sessionID string, role, content string, userID uint, maxRetries int) error // 带重试的保存
 }
 ```
 
@@ -208,6 +214,11 @@ GetCachedChatSession ====》从Redis获取缓存的会话信息
 CacheModelConfig ====》缓存模型配置信息
 CacheFullSession ====》缓存完整会话状态（包括消息历史）
 GetCachedFullSession ====》获取完整会话状态（用于快速恢复会话）
+
+AppendStreamResponse ====》增量追加流式响应数据到Redis缓存
+GetStreamResponse ====》从Redis获取完整的流式响应缓存
+DeleteStreamResponse ====》删除流式响应缓存
+SaveWithRetry ====》带重试机制的消息保存（用于网络不稳定时）
 ```
 
 **SessionManager**（非接口，但为核心管理类）
@@ -234,14 +245,15 @@ GetAvailablePersonas ====》获取可用人格列表（委托给PersonaManager�
 | /api/chat/sessions            | 获取当前用户的聊天会话列表（支持页码分页：?page=1&page_size=20） | 是     |
 | /api/chat/sessions/:session_id/messages | 获取指定会话的历史消息（支持游标分页：?cursor=0&limit=30） | 是     |
 | /api/chat/sessions/:session_id | 删除指定会话（及其所有消息和文件）                    | 是     |
+| /api/chat/recover             | 恢复断连的流式响应缓存（查询参数：session_id）            | 是     |
 
 **文件管理路由**
 
-| 路由                               | 负责的功能                           | 是否受保护 |
-|:---------------------------------|:--------------------------------|:------|
-| /api/files/upload                | 上传文件（关联到会话）                   | 是     |
-| /api/files/session/:session_id   | 获取指定会话的所有上传文件列表              | 是     |
-| /api/files/:file_id              | 删除指定文件（同时删除物理文件）             | 是     |
+| 路由                             | 负责的功能            | 是否受保护 |
+|:-------------------------------|:-----------------|:------|
+| /api/files/upload              | 上传文件（关联到会话）      | 是     |
+| /api/files/session/:session_id | 获取指定会话的所有上传文件列表  | 是     |
+| /api/files/:file_id            | 删除指定文件（同时删除物理文件） | 是     |
 
 **人格管理路由**
 
@@ -270,3 +282,4 @@ GetAvailablePersonas ====》获取可用人格列表（委托给PersonaManager�
 6.  **默认行为**：若未指定人格，使用`style.yaml`中的第一个人格；若未指定`base_url`，使用API配置中存储的`BaseURL`。
 7.  **缓存策略**：会话信息、模型配置可缓存到Redis，提高响应速度；Redis不可用时自动降级到数据库。
 8.  **分页策略**：会话列表使用传统的页码分页（`page`, `page_size`参数），消息历史使用游标分页（`cursor`, `limit`参数）以实现无限滚动。
+9.  **流式响应缓存与恢复**：流式响应过程中，响应内容会通过`AppendStreamResponse`实时追加到Redis缓存中，当客户端意外断开时，可通过`/api/chat/recover`接口（调用`GetStreamResponse`）恢复已接收的响应内容，避免重复生成。缓存会在响应完成后自动清理（`DeleteStreamResponse`）。

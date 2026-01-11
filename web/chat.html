@@ -1025,6 +1025,29 @@
                     }
                 };
 
+                // recoverStream : 重连函数
+                const recoverStream = async (aiMessageId) => {
+                    try {
+                        const recoverResponse = await fetch(`${API_BASE}/chat/recover?session_id=${sessionId.value}`);
+
+                        if (recoverResponse.ok) {
+                            const recoverData = await recoverResponse.json();
+
+                            const aiMsg = messages.value.find(msg => msg.id === aiMessageId);
+                            if (aiMsg && recoverData.cached_response) {
+                                aiMsg.content = recoverData.cached_response;
+                                aiMsg.streaming = false;
+                                console.log('✅ 从缓存恢复了回复');
+                                return true;
+                            }
+                        }
+                        return false;
+                    } catch (recoverError) {
+                        console.error('恢复缓存失败:', recoverError);
+                        return false;
+                    }
+                };
+
                 // 发送消息（流式版本）- 修正SSE解析
                 const sendMessage = async () => {
                     if ((!inputMessage.value.trim() && uploadedFiles.value.length === 0) || !sessionId.value || isTyping.value) return;
@@ -1141,11 +1164,15 @@
                         await fetchSessions();
                     } catch (error) {
                         console.error('发送消息失败:', error);
-                        // 更新AI消息为错误信息
-                        const aiMsg = messages.value.find(msg => msg.id === aiMessageId);
-                        if (aiMsg) {
-                            aiMsg.content = '抱歉，发生了错误: ' + error.message;
-                            aiMsg.streaming = false;
+                        // 尝试恢复
+                        const recovered = await recoverStream(aiMessageId);
+                        if (!recovered) {
+                            // 没有缓存，显示错误
+                            const aiMsg = messages.value.find(msg => msg.id === aiMessageId);
+                            if (aiMsg) {
+                                aiMsg.content = '抱歉，发生了错误: ' + error.message;
+                                aiMsg.streaming = false;
+                            }
                         }
                         scrollToBottom();
                     } finally {
