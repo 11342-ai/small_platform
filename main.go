@@ -76,6 +76,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	_ = LLM_Chat.NewSharedSessionService(database.DB)
+	if LLM_Chat.GlobalSharedSessionService == nil {
+		log.Printf("Failed to initialize GlobalSharedSessionService")
+		os.Exit(1)
+	}
+
 	if LLM_Chat.GlobalDefaultSessionCreator == nil {
 		log.Printf("Failed to initialize GlobalDefaultSessionCreator")
 		os.Exit(1)

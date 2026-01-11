@@ -74,6 +74,37 @@ Content: 如果是文本文件，保存其内容；否则为空
 IsProcessed: 标记该文件是否已被处理（例如是否已读入消息）
 ```
 
+**数据库SharedSession**
+&emsp;&emsp;用于存储**聊天会话的分享信息**，允许用户将聊天会话分享给他人
+
+```
+type SharedSession struct {
+	ShareID      string     `gorm:"primaryKey;size:50;uniqueIndex"` // 分享ID
+	SessionID    string     `gorm:"index;not null;size:50"`         // 关联会话
+	CreatedBy    uint       `gorm:"index;not null"`                 // 创建者
+	IsPublic     bool       `gorm:"default:true"`                   // 公开/私有
+	ExpiresAt    *time.Time `gorm:"index"`                          // 过期时间
+	MaxViews     int        `gorm:"default:-1"`                     // 最大访问次数（-1表示无限制）
+	ViewCount    int        `gorm:"default:0"`                      // 当前访问次数
+	LastAccessAt *time.Time // 最后访问时间
+	CreatedAt    time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `gorm:"autoUpdateTime"`
+}
+```
+
+```
+ShareID: 分享的唯一标识，由系统生成（例如 share_16位UUID）
+SessionID: 关联的聊天会话ID，指向ChatSession表的SessionID
+CreatedBy: 创建分享的用户ID，指向User表的ID
+IsPublic: 分享是否公开（true=公开，false=私有）
+ExpiresAt: 分享的过期时间（可选，为空表示永不过期）
+MaxViews: 最大允许访问次数（-1表示无限制，0表示禁止访问）
+ViewCount: 当前已访问次数（每次成功访问时递增）
+LastAccessAt: 最后访问时间（每次成功访问时更新）
+CreatedAt: 分享创建时间
+UpdatedAt: 分享最后更新时间（修改配置时更新）
+```
+
 **Persona配置（YAML文件，非数据库表）**
 &emsp;&emsp;用于定义不同的人格（系统提示词），保存在 `style.yaml` 中
 
@@ -221,6 +252,42 @@ DeleteStreamResponse ====》删除流式响应缓存
 SaveWithRetry ====》带重试机制的消息保存（用于网络不稳定时）
 ```
 
+**SharedSessionServiceInterface 会话分享服务接口**
+```
+type SharedSessionServiceInterface interface {
+	// === 创建者操作 ===
+
+	// CreateSharedLink 创建分享链接 // 返回: ShareID 和错误
+	CreateSharedLink(sessionID string, createdBy uint, maxViews int, expiresAt *time.Time) (string, error)
+	// DeleteSharedLink 删除分享链接 // 只允许创建者删除自己的分享
+	DeleteSharedLink(shareID string, userID uint) error
+	// UpdateSharedLink 更新分享配置 // 只允许创建者修改自己的分享
+	UpdateSharedLink(shareID string, userID uint, updates map[string]interface{}) error
+	// ListMySharedLinks 获取用户创建的所有分享链接 // 返回: 该用户创建的所有分享列表
+	ListMySharedLinks(userID uint) ([]database.SharedSession, error)
+
+	// === 被分享者操作 ===
+
+	// AccessSharedLink 访问分享链接 // 返回: 完整的会话消息、SharedSession元信息、错误 // 注意: 此操作会增加 ViewCount 和更新 LastAccessAt
+	AccessSharedLink(shareID string) (*database.ChatSession, []database.ChatMessage, *database.SharedSession, error)
+	// GetSharedLinkInfo 获取分享链接信息（不增加访问计数） // 用于: 显示分享详情、检查有效性、预览信息等
+	GetSharedLinkInfo(shareID string) (*database.SharedSession, error)
+	// ValidateSharedLink 验证分享链接是否有效 // 用于: 访问前的快速检查，不修改任何数据
+	ValidateSharedLink(shareID string) (bool, error)
+}
+```
+
+```
+CreateSharedLink ====》创建分享链接，返回生成的 ShareID
+DeleteSharedLink ====》删除分享链接（仅创建者可操作）
+UpdateSharedLink ====》更新分享配置（如最大访问次数、过期时间、公开/私有状态）
+ListMySharedLinks ====》获取用户创建的所有分享链接列表（按创建时间倒序）
+
+AccessSharedLink ====》访问分享链接，返回关联的会话、消息列表和分享元信息（会增加访问计数）
+GetSharedLinkInfo ====》获取分享链接信息（不增加访问计数），用于预览或详情展示
+ValidateSharedLink ====》验证分享链接是否有效（公开、未过期、未达访问上限），返回布尔值
+```
+
 **SessionManager**（非接口，但为核心管理类）
 &emsp;&emsp;管理多个聊天会话的生命周期，协调各服务之间的调用
 
@@ -269,6 +336,18 @@ GetAvailablePersonas ====》获取可用人格列表（委托给PersonaManager�
 | /api/user/apis/first        | 获取用户第一个可用的API配置（用于下拉列表默认值）               | 是     |
 | /api/user/apis/:name        | 根据API名称获取具体的API配置（可用于前端选择模型）             | 是     |
 | /api/user/apis/:id          | 更新或删除API配置（PUT/DELETE）                     | 是     |
+
+**分享相关路由**
+
+| 路由                                      | 负责的功能                                       | 是否受保护 |
+|:----------------------------------------|:--------------------------------------------|:------|
+| POST /api/chat/shares                   | 创建分享链接（需认证，在函数内部检查）                       | 是     |
+| GET /api/chat/shares                    | 获取我的分享列表（需认证，在函数内部检查）                     | 是     |
+| PUT /api/chat/shares/:share_id          | 更新分享配置（需认证，在函数内部检查）                       | 是     |
+| DELETE /api/chat/shares/:share_id       | 删除分享链接（需认证，在函数内部检查）                       | 是     |
+| GET /api/chat/shares/:share_id/access   | 访问分享链接（需认证）                               | 是     |
+| GET /api/chat/shares/:share_id/info     | 获取分享信息（需认证）                               | 是     |
+| GET /api/chat/shares/:share_id/validate | 验证分享有效性（需认证）                              | 是     |
 
 ********************************
 

@@ -111,6 +111,18 @@ func AuthRoute() {
 			notes.GET("/search/:keyword", Note.SearchNotes)
 		}
 
+		// 分享相关路由（全部要认证访问）
+		shares := auth.Group("/chat/shares")
+		{
+			shares.POST("", LLM_Chat.CreateShare)                     // 创建分享（需要认证，在函数内部检查）
+			shares.GET("", LLM_Chat.GetMyShares)                      // 我的分享列表（需要认证，在函数内部检查）
+			shares.PUT("/:share_id", LLM_Chat.UpdateShare)            // 更新分享（需要认证，在函数内部检查）
+			shares.DELETE("/:share_id", LLM_Chat.DeleteShare)         // 删除分享（需要认证，在函数内部检查）
+			shares.GET("/:share_id/access", LLM_Chat.AccessShare)     // 访问分享（需要认证）
+			shares.GET("/:share_id/info", LLM_Chat.GetShareInfo)      // 获取分享信息（需要认证）
+			shares.GET("/:share_id/validate", LLM_Chat.ValidateShare) // 验证分享有效性（需要认证）
+		}
+
 	}
 
 	r.GET("/", func(c *gin.Context) {
@@ -131,6 +143,10 @@ func AuthRoute() {
 
 	r.GET("/note", func(c *gin.Context) {
 		c.File("./web/note.html")
+	})
+
+	r.GET("/share/:share_id", func(c *gin.Context) {
+		c.File("./web/share.html")
 	})
 
 	// 前端路由 - 支持SPA

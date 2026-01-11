@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分享的对话</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.7.0/build/highlight.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f5f5f5;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    .share-header {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .share-header h1 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    .share-meta {
+      color: #666;
+      font-size: 14px;
+    }
+    .messages-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .messages-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+    .messages {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 20px;
+    }
+    .loading-more {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      gap: 10px;
+      color: #999;
+      font-size: 14px;
+      background-color: #fafafa;
+      border-bottom: 1px solid #eee;
+      flex-shrink: 0;
+    }
+    .loading-more .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ddd;
+      border-top-color: #4CAF50;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .no-more-messages {
+      text-align: center;
+      padding: 10px;
+      color: #ccc;
+      font-size: 12px;
+      background-color: #fafafa;
+      border-bottom: 1px solid #eee;
+      flex-shrink: 0;
+    }
+    .message {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .message.user {
+      border-left: 4px solid #4a90e2;
+    }
+    .message.assistant {
+      border-left: 4px solid #52c41a;
+    }
+    .message-role {
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    .message-content {
+      line-height: 1.6;
+      color: #444;
+    }
+    .message-content pre {
+      background: #f6f8fa;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .message-content code {
+      font-family: 'Courier New', monospace;
+      background-color: #f6f8fa;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #999;
+    }
+    .error {
+      text-align: center;
+      padding: 60px;
+      color: #ff4444;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #999;
+      font-size: 14px;
+    }
+    .footer a {
+      color: #4a90e2;
+      text-decoration: none;
+    }
+    .debug-info {
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="container" v-if="!error">
+    <div class="share-header">
+      <h1>{{ session?.title || '分享的对话' }}</h1>
+      <div class="share-meta">
+        <span>访问次数: {{ share?.view_count || 0 }}</span>
+        <span v-if="share?.max_views > 0"> / {{ share.max_views }}</span>
+        <span v-if="share?.expires_at"> | 过期时间: {{ formatDate(share.expires_at) }}</span>
+      </div>
+      <!-- 调试信息 -->
+      <div class="debug-info" v-if="debug">
+        会话ID: {{ session?.SessionID || '无' }} |
+        消息数量: {{ messages.length }} |
+        加载状态: {{ loading ? '加载中' : '加载完成' }}
+      </div>
+    </div>
+
+    <div class="messages-container">
+      <!-- 加载更多指示器 -->
+      <div v-if="isLoadingMore" class="loading-more">
+        <div class="spinner"></div>
+        <span>加载历史消息中...</span>
+      </div>
+
+      <!-- 没有更多消息的提示 -->
+      <div v-else-if="!hasMoreMessages && messages.length > 0" class="no-more-messages">
+        <span>已加载全部历史消息</span>
+      </div>
+
+      <div class="messages-wrapper" ref="messagesContainer" @scroll="handleScroll">
+        <div class="messages" v-if="messages.length > 0">
+          <div v-for="(msg, index) in messages" :key="msg.id || index"
+               :class="['message', msg.role]">
+            <div class="message-role">
+              {{ msg.role === 'user' ? '用户' : 'AI 助手' }}
+            </div>
+            <div class="message-content">
+              <!-- 调试模式：显示原始内容 -->
+              <div v-if="debug" style="background: #ffeb3b; padding: 5px; margin-bottom: 10px; font-size: 12px;">
+                消息类型: {{ typeof msg.content }} | 长度: {{ msg.content?.length || 0 }}
+              </div>
+              <!-- 正常渲染 -->
+              <div v-html="renderMarkdown(msg.content || '')"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="loading" v-else-if="loading">
+          正在加载...
+        </div>
+
+        <div class="loading" v-else-if="!loading && messages.length === 0">
+          暂无消息
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error" v-else>
+    <h2>{{ error }}</h2>
+    <p v-if="share && share.max_views > 0 && share.view_count >= share.max_views">
+      此分享链接的访问次数已达上限
+    </p>
+    <p v-else-if="share && share.expires_at && new Date(share.expires_at) < new Date()">
+      此分享链接已过期
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>由 <a href="/">个人工具平台</a> 提供分享</p>
+  </div>
+</div>
+
+<script>
+  const { createApp, ref, onMounted, nextTick } = Vue;
+
+  createApp({
+    setup() {
+      const shareId = ref('');
+      const session = ref(null);
+      const messages = ref([]);
+      const share = ref(null);
+      const loading = ref(true);
+      const error = ref('');
+      const messagesContainer = ref(null);
+
+      // 分页相关状态
+      const messageCursor = ref(0);
+      const hasMoreMessages = ref(false);
+      const isLoadingMore = ref(false);
+      const MESSAGE_PAGE_SIZE = 30;
+
+      // 调试模式
+      const debug = ref(window.location.search.includes('debug'));
+
+      // 配置Markdown渲染
+      const configureMarkdown = () => {
+        console.log('配置Markdown渲染...');
+        try {
+          marked.setOptions({
+            highlight: function(code, lang) {
+              if (!lang || lang.trim() === '') {
+                return hljs.highlightAuto(code).value;
+              }
+              const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+              try {
+                return hljs.highlight(code, { language }).value;
+              } catch (e) {
+                return hljs.highlightAuto(code).value;
+              }
+            },
+            langPrefix: 'hljs language-',
+            pedantic: false,
+            gfm: true,
+            breaks: true,
+            sanitize: false,
+            smartLists: true,
+            smartypants: false,
+            xhtml: false
+          });
+
+          hljs.configure({
+            tabReplace: '    ',
+            classPrefix: 'hljs-',
+            languages: ['javascript', 'python', 'java', 'go', 'c', 'cpp', 'html', 'css', 'json', 'xml', 'bash', 'sql', 'markdown']
+          });
+
+          console.log('Markdown配置完成');
+        } catch (e) {
+          console.error('Markdown配置错误:', e);
+        }
+      };
+
+      const renderMarkdown = (content) => {
+        try {
+          if (!content || content.trim() === '') {
+            return '<p><em>（空消息）</em></p>';
+          }
+
+          // 处理换行符
+          const contentWithBreaks = content.replace(/\n/g, '\n\n');
+
+          const rendered = marked.parse(contentWithBreaks);
+          return rendered;
+        } catch (e) {
+          console.error('Markdown渲染错误:', e);
+          // 如果渲染失败，返回原始内容
+          return `<pre style="white-space: pre-wrap;">${escapeHtml(content)}</pre>`;
+        }
+      };
+
+      // HTML转义函数
+      const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      };
+
+      const formatDate = (dateStr) => {
+        if (!dateStr) return '无';
+        return new Date(dateStr).toLocaleString('zh-CN');
+      };
+
+      // 获取分享基本信息
+      const loadSharedInfo = async () => {
+        try {
+          console.log('开始加载分享信息...');
+          const shareIdPath = window.location.pathname.split('/share/')[1];
+          if (!shareIdPath) {
+            error.value = '分享链接无效';
+            return false;
+          }
+          shareId.value = shareIdPath;
+          console.log('分享ID:', shareId.value);
+
+          const response = await axios.get(`/api/chat/shares/${shareId.value}/access`);
+          console.log('分享信息响应:', response.data);
+
+          session.value = response.data.session;
+          share.value = response.data.share;
+
+          console.log('会话信息:', session.value);
+          console.log('分享信息:', share.value);
+
+          return true;
+        } catch (err) {
+          console.error('加载分享信息失败:', err);
+          error.value = err.response?.data?.error || '加载失败';
+          return false;
+        }
+      };
+
+      // 获取消息（分页）- 修改为直接使用现有接口
+      const fetchMessages = async (cursor = 0) => {
+        try {
+          console.log('获取消息，游标:', cursor);
+
+          // 首先尝试使用现有的 /access 接口获取消息
+          const response = await axios.get(`/api/chat/shares/${shareId.value}/access`);
+
+          // 从响应中提取消息
+          let allMessages = [];
+          if (response.data.messages && Array.isArray(response.data.messages)) {
+            allMessages = response.data.messages;
+          }
+
+          console.log('原始消息数据:', allMessages);
+
+          if (allMessages.length === 0) {
+            return {
+              messages: [],
+              cursor: 0,
+              hasMore: false
+            };
+          }
+
+          // 对消息进行排序（假设数据库返回的是按时间升序排列）
+          const sortedMessages = [...allMessages].sort((a, b) => {
+            const timeA = a.created_at || a.CreatedAt || 0;
+            const timeB = b.created_at || b.CreatedAt || 0;
+            return new Date(timeA) - new Date(timeB);
+          });
+
+          // 模拟分页逻辑
+          let startIndex = 0;
+          if (cursor > 0) {
+            // 查找游标对应的索引
+            const cursorIndex = sortedMessages.findIndex(msg => {
+              const msgId = msg.id || msg.ID || msg.Id;
+              return msgId == cursor;
+            });
+            if (cursorIndex > 0) {
+              startIndex = cursorIndex;
+            }
+          }
+
+          const endIndex = Math.min(startIndex + MESSAGE_PAGE_SIZE, sortedMessages.length);
+          const batchMessages = sortedMessages.slice(startIndex, endIndex);
+
+          console.log('分页参数 - start:', startIndex, 'end:', endIndex, 'batch size:', batchMessages.length);
+
+          // 格式化消息
+          const formattedMessages = batchMessages.map((msg, index) => {
+            // 尝试多种可能的字段名
+            const msgId = msg.id || msg.ID || msg.Id || `msg-${Date.now()}-${index}`;
+            const msgRole = (msg.role || msg.Role || 'user').toLowerCase();
+            const msgContent = msg.content || msg.Content || msg.Message || '';
+
+            console.log(`消息 ${index}:`, { id: msgId, role: msgRole, content: msgContent.substring(0, 50) + '...' });
+
+            return {
+              id: msgId,
+              role: msgRole,
+              content: msgContent
+            };
+          });
+
+          // 计算下一个游标（第一条消息的ID）
+          const nextCursor = formattedMessages.length > 0 ? formattedMessages[0].id : 0;
+          const hasMore = startIndex > 0;
+
+          console.log('返回结果:', {
+            messageCount: formattedMessages.length,
+            nextCursor,
+            hasMore,
+            messages: formattedMessages.map(m => ({ id: m.id, role: m.role }))
+          });
+
+          return {
+            messages: formattedMessages,
+            cursor: nextCursor,
+            hasMore: hasMore
+          };
+        } catch (err) {
+          console.error('获取消息失败:', err);
+          return {
+            messages: [],
+            cursor: 0,
+            hasMore: false
+          };
+        }
+      };
+
+      // 首次加载消息
+      const loadInitialMessages = async () => {
+        if (!shareId.value) return;
+
+        console.log('开始首次加载消息...');
+        const result = await fetchMessages();
+        console.log('首次加载结果:', result);
+
+        if (result.messages.length > 0) {
+          messages.value = result.messages;
+          messageCursor.value = result.cursor;
+          hasMoreMessages.value = result.hasMore;
+          console.log('消息加载成功，数量:', messages.value.length);
+        } else {
+          console.log('没有加载到消息');
+        }
+
+        loading.value = false;
+
+        // 高亮代码
+        nextTick(() => {
+          console.log('开始高亮代码块...');
+          const codeBlocks = document.querySelectorAll('pre code');
+          console.log('找到代码块数量:', codeBlocks.length);
+
+          codeBlocks.forEach((block, index) => {
+            try {
+              hljs.highlightElement(block);
+              console.log(`高亮代码块 ${index + 1} 完成`);
+            } catch (e) {
+              console.error(`高亮代码块 ${index + 1} 失败:`, e);
+            }
+          });
+
+          // 滚动到底部（最新消息）
+          if (messagesContainer.value) {
+            console.log('滚动到底部');
+            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+          }
+        });
+      };
+
+      // 加载更多消息
+      const loadMoreMessages = async () => {
+        if (!shareId.value || isLoadingMore.value || !hasMoreMessages.value) {
+          console.log('跳过加载更多:', {
+            hasShareId: !!shareId.value,
+            isLoading: isLoadingMore.value,
+            hasMore: hasMoreMessages.value
+          });
+          return;
+        }
+
+        isLoadingMore.value = true;
+        console.log('开始加载更多消息...');
+
+        // 获取第一条消息的ID作为游标
+        const firstMessageId = messages.value[0]?.id || 0;
+        console.log('当前第一条消息ID:', firstMessageId);
+
+        if (firstMessageId === 0) {
+          console.log('第一条消息ID为0，跳过加载');
+          isLoadingMore.value = false;
+          return;
+        }
+
+        const result = await fetchMessages(firstMessageId);
+        console.log('加载更多结果:', {
+          newMessagesCount: result.messages.length,
+          hasMore: result.hasMore
+        });
+
+        if (result.messages.length > 0) {
+          // 将新消息添加到数组前面
+          messages.value = [...result.messages, ...messages.value];
+          messageCursor.value = result.cursor;
+          hasMoreMessages.value = result.hasMore;
+
+          // 保存当前滚动位置
+          const oldScrollHeight = messagesContainer.value.scrollHeight;
+          const oldScrollTop = messagesContainer.value.scrollTop;
+
+          // 等待DOM更新
+          await nextTick();
+
+          // 恢复滚动位置（减去新增内容的高度）
+          const newScrollHeight = messagesContainer.value.scrollHeight;
+          messagesContainer.value.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight);
+
+          // 高亮新加载的代码块
+          nextTick(() => {
+            document.querySelectorAll('pre code').forEach(block => {
+              hljs.highlightElement(block);
+            });
+          });
+        }
+
+        isLoadingMore.value = false;
+        console.log('加载更多完成');
+      };
+
+      // 滚动事件处理
+      const handleScroll = () => {
+        if (!messagesContainer.value) return;
+
+        const scrollTop = messagesContainer.value.scrollTop;
+        const scrollHeight = messagesContainer.value.scrollHeight;
+        const clientHeight = messagesContainer.value.clientHeight;
+
+        // 当滚动到顶部附近（50px以内）时，加载更多
+        if (scrollTop < 50 && hasMoreMessages.value && !isLoadingMore.value) {
+          console.log('触发滚动加载，位置:', scrollTop);
+          loadMoreMessages();
+        }
+      };
+
+      // 加载分享的对话
+      const loadSharedSession = async () => {
+        console.log('=== 开始加载分享会话 ===');
+        configureMarkdown();
+
+        // 先加载基本信息
+        const success = await loadSharedInfo();
+        if (!success) {
+          loading.value = false;
+          return;
+        }
+
+        // 再加载初始消息
+        await loadInitialMessages();
+        console.log('=== 加载分享会话完成 ===');
+      };
+
+      onMounted(() => {
+        console.log('页面加载完成，开始初始化...');
+        loadSharedSession();
+
+        // 添加滚动监听
+        nextTick(() => {
+          if (messagesContainer.value) {
+            console.log('添加滚动监听器');
+            messagesContainer.value.addEventListener('scroll', handleScroll);
+          }
+        });
+      });
+
+      return {
+        session,
+        messages,
+        share,
+        loading,
+        error,
+        messagesContainer,
+        isLoadingMore,
+        hasMoreMessages,
+        debug,
+        renderMarkdown,
+        formatDate,
+        handleScroll
+      };
+    }
+  }).mount('#app');
+</script>
+</body>
+</html>

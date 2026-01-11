@@ -64,3 +64,16 @@ type ChatMessage struct {
 	Role      string `gorm:"size:20;not null"` // user, assistant, system
 	Content   string `gorm:"type:text"`
 }
+
+type SharedSession struct {
+	ShareID      string     `gorm:"primaryKey;size:50;uniqueIndex"` // 分享ID
+	SessionID    string     `gorm:"index;not null;size:50"`         // 关联会话
+	CreatedBy    uint       `gorm:"index;not null"`                 // 创建者
+	IsPublic     bool       `gorm:"default:true"`                   // 公开/私有
+	ExpiresAt    *time.Time `gorm:"index"`                          // 过期时间
+	MaxViews     int        `gorm:"default:-1"`                     // 最大访问次数（-1表示无限制）
+	ViewCount    int        `gorm:"default:0"`                      // 当前访问次数
+	LastAccessAt *time.Time // 最后访问时间
+	CreatedAt    time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `gorm:"autoUpdateTime"`
+}

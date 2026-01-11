@@ -31,6 +31,7 @@ func InitDB() error {
 		&ChatMessage{}, // 新增
 		&UploadedFile{},
 		&Note{},
+		&SharedSession{},
 	)
 	if err != nil {
 		return fmt.Errorf("数据库迁移失败:%s", err)

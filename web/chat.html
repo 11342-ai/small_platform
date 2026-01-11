@@ -82,6 +82,157 @@
             color: #333;
         }
 
+        /* 分享相关样式 */
+        .share-session {
+            padding: 4px 8px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .share-session:hover {
+            background-color: #357ae8;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 400px;
+            max-width: 90vw;
+        }
+
+        .modal-content.large {
+            min-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .share-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .share-form label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .share-form input[type="number"],
+        .share-form input[type="datetime-local"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .modal-buttons button.primary {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        .shares-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .share-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .share-url {
+            font-family: monospace;
+            color: #4a90e2;
+            margin-bottom: 4px;
+        }
+
+        .share-meta {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .share-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .share-actions button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .share-actions button.delete {
+            background-color: #ff4444;
+            color: white;
+        }
+
+        .empty-shares {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .my-shares-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .my-shares-btn:hover {
+            background-color: #5a6268;
+        }
+
         .model-selector {
             padding: 20px;
             border-bottom: 1px solid #e0e0e0;
@@ -513,6 +664,7 @@
 </head>
 <body>
     <div id="app">
+
         <div class="container">
             <!-- 左侧边栏 -->
             <div class="sidebar">
@@ -523,6 +675,11 @@
                         </a>
                         <h2>AI 聊天助手</h2>
                     </div>
+                </div>
+
+                <!-- 在侧边栏顶部添加"我的分享"按钮 -->
+                <div class="sidebar-actions">
+                    <button class="my-shares-btn" @click="openMySharesModal">🔗 我的分享</button>
                 </div>
 
                 <div class="model-selector">
@@ -569,13 +726,12 @@
                         </div>
                         <div class="session-meta">
                             <span>模型: {{ session.ModelName }}</span>
-                            <button
-                                class="delete-session"
-                                @click.stop="deleteSession(session.SessionID)"
-                                title="删除会话"
-                            >
-                                删除
-                            </button>
+                            <div class="session-actions">
+                                <button class="delete-session" @click.stop="deleteSession(session.SessionID)" title="删除会话">
+                                    删除
+                                </button>
+                                <button class="share-session" @click.stop="openShareModal(session)">分享</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -655,7 +811,58 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 新增：分享弹窗（在页面底部添加） -->
+            <div class="modal-overlay" v-if="showShareModal" @click="closeShareModal">
+                <div class="modal-content" @click.stop>
+                    <h3>创建分享链接</h3>
+                    <div class="share-form">
+                        <label>最大访问次数</label>
+                        <input type="number" v-model="shareForm.maxViews" placeholder="-1 表示无限制" />
+
+                        <label>过期时间</label>
+                        <input type="datetime-local" v-model="shareForm.expiresAt" />
+
+                        <label>
+                            <input type="checkbox" v-model="shareForm.isPublic" />
+                            公开分享
+                        </label>
+                    </div>
+                    <div class="modal-buttons">
+                        <button @click="closeShareModal">取消</button>
+                        <button class="primary" @click="createShare">创建分享</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增：我的分享列表弹窗 -->
+            <div class="modal-overlay" v-if="showMySharesModal" @click="closeMySharesModal">
+                <div class="modal-content large" @click.stop>
+                    <h3>我的分享链接</h3>
+                    <div class="shares-list" v-if="myShares.length > 0">
+                        <div class="share-item" v-for="share in myShares" :key="share.share_id">
+                            <div class="share-info">
+                                <div class="share-url">{{ share.share_url }}</div>
+                                <div class="share-meta">
+                                    访问: {{ share.view_count }}/{{ share.max_views === -1 ? '无限制' : share.max_views }}
+                                </div>
+                            </div>
+                            <div class="share-actions">
+                                <button @click="copyShareLink(share.share_id)">复制</button>
+                                <button @click="editShare(share)">编辑</button>
+                                <button class="delete" @click="deleteShare(share.share_id)">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="empty-shares" v-else>
+                        <p>还没有创建任何分享链接</p>
+                    </div>
+                </div>
+            </div>
+
         </div>
+
+
     </div>
 
     <script>
@@ -682,6 +889,17 @@
                 const isLoadingMore = ref(false);     // 是否正在加载更多
                 const isFirstLoad = ref(true);        // 是否首次加载
                 const MESSAGE_PAGE_SIZE = 30;        // 每页消息数量
+
+                // 新增：分享相关的响应式变量
+                const showShareModal = ref(false);
+                const showMySharesModal = ref(false);
+                const shareForm = ref({
+                    sessionID: '',
+                    maxViews: -1,
+                    expiresAt: '',
+                    isPublic: true
+                });
+                const myShares = ref([]);
 
                 const API_BASE = '/api';
 
@@ -791,6 +1009,143 @@
                     }
 
                     return fileIDs;
+                };
+
+                // 打开分享弹窗
+                const openShareModal = (session) => {
+                    shareForm.value = {
+                        sessionID: session.SessionID,
+                        maxViews: -1,
+                        expiresAt: '',
+                        isPublic: true
+                    };
+                    showShareModal.value = true;
+                };
+
+                // 关闭分享弹窗
+                const closeShareModal = () => {
+                    showShareModal.value = false;
+                };
+
+                // 创建分享链接
+                const createShare = async () => {
+                    try {
+                        const payload = {
+                            session_id: shareForm.value.sessionID,
+                            max_views: shareForm.value.maxViews,
+                            is_public: shareForm.value.isPublic
+                        };
+
+                        if (shareForm.value.expiresAt) {
+                            payload.expires_at = new Date(shareForm.value.expiresAt).toISOString();
+                        }
+
+                        const response = await axios.post(`${API_BASE}/chat/shares`, payload);
+
+                        const shareURL = window.location.origin + response.data.share_url;
+
+                        await Swal.fire({
+                            title: '分享链接创建成功！',
+                            html: `<input type="text" value="${shareURL}" readonly style="width: 100%; padding: 8px; margin-top: 10px;" />`,
+                            icon: 'success'
+                        });
+
+                        closeShareModal();
+                        await fetchMyShares(); // 刷新分享列表
+
+                    } catch (error) {
+                        Swal.fire('创建失败', error.response?.data?.error || error.message, 'error');
+                    }
+                };
+
+                // 打开我的分享列表
+                const openMySharesModal = async () => {
+                    await fetchMyShares();
+                    showMySharesModal.value = true;
+                };
+
+                // 关闭我的分享列表
+                const closeMySharesModal = () => {
+                    showMySharesModal.value = false;
+                };
+
+                // 获取我的分享列表
+                const fetchMyShares = async () => {
+                    try {
+                        const response = await axios.get(`${API_BASE}/chat/shares`);
+                        myShares.value = response.data.shares;
+                    } catch (error) {
+                        console.error('获取分享列表失败:', error);
+                        myShares.value = [];
+                    }
+                };
+
+                // 复制分享链接
+                const copyShareLink = (shareID) => {
+                    const shareURL = window.location.origin + '/share/' + shareID;
+                    navigator.clipboard.writeText(shareURL).then(() => {
+                        Swal.fire('复制成功', '分享链接已复制到剪贴板', 'success');
+                    });
+                };
+
+                // 编辑分享
+                const editShare = async (share) => {
+                    const { value: formValues } = await Swal.fire({
+                        title: '编辑分享配置',
+                        html: `
+                                <div style="text-align: left;">
+                                    <label>最大访问次数:</label>
+                                    <input id="swal-input1" class="swal2-input" value="${share.max_views}" type="number" />
+                                    <br><br>
+                                    <label>公开分享:</label>
+                                    <input id="swal-input2" type="checkbox" ${share.is_public ? 'checked' : ''} />
+                                </div>
+        `,
+                        focusConfirm: false,
+                        showCancelButton: true,
+                        confirmButtonText: '保存',
+                        preConfirm: () => {
+                            return {
+                                maxViews: document.getElementById('swal-input1').value,
+                                isPublic: document.getElementById('swal-input2').checked
+                            };
+                        }
+                    });
+
+                    if (formValues) {
+                        try {
+                            await axios.put(`${API_BASE}/chat/shares/${share.share_id}`, {
+                                max_views: parseInt(formValues.maxViews),
+                                is_public: formValues.isPublic
+                            });
+                            Swal.fire('更新成功', '', 'success');
+                            await fetchMyShares();
+                        } catch (error) {
+                            Swal.fire('更新失败', error.response?.data?.error || error.message, 'error');
+                        }
+                    }
+                };
+
+                // 删除分享
+                const deleteShare = async (shareID) => {
+                    const result = await Swal.fire({
+                        title: '确定要删除这个分享吗？',
+                        text: '删除后链接将无法访问',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: '删除',
+                        cancelButtonText: '取消'
+                    });
+
+                    if (result.isConfirmed) {
+                        try {
+                            await axios.delete(`${API_BASE}/chat/shares/${shareID}`);
+                            Swal.fire('删除成功', '', 'success');
+                            await fetchMyShares();
+                        } catch (error) {
+                            Swal.fire('删除失败', error.response?.data?.error || error.message, 'error');
+                        }
+                    }
                 };
 
                 // 获取模型列表 - 修改为从用户API中获取唯一模型
@@ -1272,7 +1627,21 @@
                     totalPages,
                     previousPage,
                     nextPage,
-                    goToPage
+                    goToPage,
+
+                    // 新增：分享相关
+                    showShareModal,
+                    showMySharesModal,
+                    shareForm,
+                    myShares,
+                    openShareModal,
+                    closeShareModal,
+                    createShare,
+                    openMySharesModal,
+                    closeMySharesModal,
+                    copyShareLink,
+                    editShare,
+                    deleteShare
                 };
             }
         }).mount('#app');
