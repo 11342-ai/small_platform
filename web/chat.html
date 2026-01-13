@@ -13,6 +13,9 @@
     <!-- Highlight.js for code highlighting -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github.min.css">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.7.0/build/highlight.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
         /* 基础样式 */
         * {
@@ -1044,17 +1047,44 @@
 
                         const shareURL = window.location.origin + response.data.share_url;
 
+                        // 使用更明确的成功提示
                         await Swal.fire({
-                            title: '分享链接创建成功！',
-                            html: `<input type="text" value="${shareURL}" readonly style="width: 100%; padding: 8px; margin-top: 10px;" />`,
-                            icon: 'success'
+                            title: '🎉 分享链接创建成功！',
+                            html: `
+                <div style="text-align: left;">
+                    <p>分享链接已生成：</p>
+                    <input type="text" value="${shareURL}" readonly
+                           style="width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5;">
+                    <small>点击下方按钮复制链接</small>
+                </div>
+            `,
+                            icon: 'success',
+                            showCancelButton: true,
+                            confirmButtonText: '复制链接',
+                            cancelButtonText: '关闭'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                navigator.clipboard.writeText(shareURL);
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '链接已复制到剪贴板！',
+                                    showConfirmButton: false,
+                                    timer: 1500
+                                });
+                            }
                         });
 
+                        // 关闭弹窗并刷新分享列表
                         closeShareModal();
-                        await fetchMyShares(); // 刷新分享列表
+                        await fetchMyShares();
 
                     } catch (error) {
-                        Swal.fire('创建失败', error.response?.data?.error || error.message, 'error');
+                        console.error('创建分享失败:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: '创建分享失败',
+                            text: error.response?.data?.error || error.message || '请检查网络连接'
+                        });
                     }
                 };
 
@@ -1073,7 +1103,11 @@
                 const fetchMyShares = async () => {
                     try {
                         const response = await axios.get(`${API_BASE}/chat/shares`);
-                        myShares.value = response.data.shares;
+                        // 确保字段名与后端返回的一致
+                        myShares.value = response.data.shares.map(share => ({
+                            ...share,
+                            share_id: share.share_id || share.ShareID || share.shareID
+                        }));
                     } catch (error) {
                         console.error('获取分享列表失败:', error);
                         myShares.value = [];
@@ -1140,10 +1174,19 @@
                     if (result.isConfirmed) {
                         try {
                             await axios.delete(`${API_BASE}/chat/shares/${shareID}`);
-                            Swal.fire('删除成功', '', 'success');
+                            Swal.fire({
+                                icon: 'success',
+                                title: '删除成功',
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
                             await fetchMyShares();
                         } catch (error) {
-                            Swal.fire('删除失败', error.response?.data?.error || error.message, 'error');
+                            Swal.fire({
+                                icon: 'error',
+                                title: '删除失败',
+                                text: error.response?.data?.error || error.message
+                            });
                         }
                     }
                 };
@@ -1607,6 +1650,8 @@
                     hasMoreMessages,
                     isLoadingMore,
                     loadMoreMessages,
+
+                    window: window,
 
                     createNewSession,
                     switchSession,
