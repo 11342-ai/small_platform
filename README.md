@@ -129,3 +129,7 @@ Copy code
 # v -3.62
 
 这一个小部分，我没有写多少东西，我仅仅只是写了那个 **type UserService interface** 和 **type UserAPIServiceInterface interface**有关的那个测试函数，其他的没有什么新东西，只是有人说我没有测试函数，不知道如何验证我的函数是不是正确的，现在给了例子了
+
+# v -3.63
+
+这个小部分当中，我将那个User数据库的ID明示，然后，添加新的数据库，方便我后面搞新功能
