@@ -1,13 +1,10 @@
 package database
 
 import (
-	"errors"
 	"fmt"
 	"github.com/glebarez/sqlite"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"log"
-	"platfrom/Config"
 )
 
 var (
@@ -42,11 +39,6 @@ func InitDB() error {
 	// 修复 chat_sessions 表的时间戳列
 	if err := fixChatSessionTimestamps(DB); err != nil {
 		return fmt.Errorf("警告: 修复 chat_sessions 表时间戳失败: %v", err)
-	}
-
-	if err := ensureAdminExists(DB); err != nil {
-		log.Printf("警告: 创建默认管理员失败: %v", err)
-		// 不影响启动，只记录日志
 	}
 
 	log.Println("数据库连接成功")

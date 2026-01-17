@@ -40,7 +40,7 @@ func RootListAllUsers(c *gin.Context) {
 	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
 
 	c.JSON(http.StatusOK, database.UserListResponse{
-		Users:      convertToUserResponses(userResponses),
+		Users:      userResponses,
 		Total:      total,
 		Page:       page,
 		PageSize:   pageSize,
@@ -100,18 +100,6 @@ func RootAddUser(c *gin.Context) {
 	})
 }
 
-// 辅助函数：转换用户响应格式
-func convertToUserResponses(adminUsers []database.AdminUserResponse) []database.UserResponse {
-	var responses []database.UserResponse
-	for _, user := range adminUsers {
-		responses = append(responses, database.UserResponse{
-			ID:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		})
-	}
-	return responses
-}
 
 // RootLogin 管理员专用登录
 func RootLogin(c *gin.Context) {

@@ -111,9 +111,9 @@ type AdminCreateUserRequest struct {
 	Role     Role   `json:"role" binding:"required,oneof=user"`
 }
 
-// UserListResponse 用户列表响应
+// UserListResponse 用户列表响应（管理员视图）
 type UserListResponse struct {
-	Users      []UserResponse `json:"users"`
+	Users      []AdminUserResponse `json:"users"`
 	Total      int64          `json:"total"`
 	Page       int            `json:"page"`
 	PageSize   int            `json:"page_size"`

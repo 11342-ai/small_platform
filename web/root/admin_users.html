@@ -560,10 +560,12 @@
 
                     <div class="form-group">
                         <label class="form-label">用户角色</label>
-                        <select v-model="newUser.role" class="form-control">
+                        <select v-model="newUser.role" class="form-control" disabled>
                             <option value="user">普通用户</option>
-                            <option value="admin">管理员</option>
                         </select>
+                        <p style="font-size: 0.875rem; color: #666; margin-top: 0.5rem;">
+                            <i class="bi bi-info-circle"></i> 管理员账户唯一，只能通过系统创建
+                        </p>
                     </div>
 
                     <button type="submit" class="btn btn-primary" :disabled="addingUser">
