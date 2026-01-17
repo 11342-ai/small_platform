@@ -100,7 +100,6 @@ func RootAddUser(c *gin.Context) {
 	})
 }
 
-
 // RootLogin 管理员专用登录
 func RootLogin(c *gin.Context) {
 	var req database.LoginRequest

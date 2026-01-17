@@ -210,6 +210,74 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* 图标网格样式 - 适配管理员面板 */
+        .admin-icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 1rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .admin-icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border-radius: 15px;
+            padding: 2rem 1rem;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        .admin-icon-item:hover {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .admin-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        .admin-icon-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .admin-icon-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1.5rem;
+                margin-top: 1.5rem;
+            }
+
+            .admin-icon {
+                font-size: 2.5rem;
+            }
+
+            .admin-icon-label {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-icon-grid {
+                grid-template-columns: 1fr;
+                max-width: 300px;
+            }
+        }
+
         .footer-note {
             text-align: center;
             margin-top: 2rem;
@@ -279,10 +347,19 @@
                 <p>登录时间: {{ formatDate(new Date()) }}</p>
             </div>
 
-            <div class="empty-panel">
-                <i class="bi bi-layout-text-sidebar-reverse"></i>
-                <h4>空白面板</h4>
-                <p>这里没有任何功能，仅用于管理员身份验证测试。</p>
+            <div class="admin-icon-grid">
+                <div class="admin-icon-item" @click="navigateToAdminUsers">
+                    <i class="bi bi-people-fill admin-icon"></i>
+                    <span class="admin-icon-label">用户管理</span>
+                </div>
+                <div class="admin-icon-item" @click="navigateToAdminChats">
+                    <i class="bi bi-chat-left-text-fill admin-icon"></i>
+                    <span class="admin-icon-label">聊天会话管理</span>
+                </div>
+                <div class="admin-icon-item" @click="navigateToAdminNotes">
+                    <i class="bi bi-journal-text admin-icon"></i>
+                    <span class="admin-icon-label">笔记管理</span>
+                </div>
             </div>
         </div>
 
@@ -393,6 +470,21 @@
                 });
             };
 
+            // 跳转到用户管理页面
+            const navigateToAdminUsers = () => {
+                window.location.href = '/admin/users';
+            };
+
+            // 跳转到聊天会话管理页面
+            const navigateToAdminChats = () => {
+                window.location.href = '/admin/chats';
+            };
+
+            // 跳转到笔记管理页面
+            const navigateToAdminNotes = () => {
+                window.location.href = '/admin/notes';
+            };
+
             // 初始化检查认证状态
             onMounted(() => {
                 checkAuth();
@@ -407,7 +499,10 @@
                 loginSuccess,
                 handleLogin,
                 logout,
-                formatDate
+                formatDate,
+                navigateToAdminUsers,
+                navigateToAdminChats,
+                navigateToAdminNotes
             };
         }
     });

@@ -114,10 +114,10 @@ type AdminCreateUserRequest struct {
 // UserListResponse 用户列表响应（管理员视图）
 type UserListResponse struct {
 	Users      []AdminUserResponse `json:"users"`
-	Total      int64          `json:"total"`
-	Page       int            `json:"page"`
-	PageSize   int            `json:"page_size"`
-	TotalPages int            `json:"total_pages"`
+	Total      int64               `json:"total"`
+	Page       int                 `json:"page"`
+	PageSize   int                 `json:"page_size"`
+	TotalPages int                 `json:"total_pages"`
 }
 
 // AdminUserResponse 管理员查看的用户信息（包含角色）

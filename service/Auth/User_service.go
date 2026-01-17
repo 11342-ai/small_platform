@@ -324,7 +324,7 @@ func (s *userService) RootListAllUsers(page, pageSize int) ([]database.User, int
 	return users, total, nil
 }
 
-// RootDeleteUserByID 删除用户（软删除）
+// RootDeleteUserByID 删除用户（硬删除）
 func (s *userService) RootDeleteUserByID(userID uint) error {
 	// 先检查用户是否存在
 	var user database.User
@@ -345,8 +345,8 @@ func (s *userService) RootDeleteUserByID(userID uint) error {
 		}
 	}
 
-	// GORM 的 Delete 会自动执行软删除（因为 User 内嵌了 gorm.Model）
-	if err := s.db.Delete(&user).Error; err != nil {
+	// 使用 Unscoped().Delete() 进行硬删除（物理删除）
+	if err := s.db.Unscoped().Delete(&user).Error; err != nil {
 		return fmt.Errorf("删除用户失败: %w", err)
 	}
 

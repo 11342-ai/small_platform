@@ -462,6 +462,38 @@
             }
         }
 
+        /* 简单分页样式（类似chat.html） */
+        .simple-pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 1rem;
+        }
+
+        .simple-pagination button {
+            padding: 5px 15px;
+            border: 1px solid #007bff;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .simple-pagination button:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .simple-pagination span {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
         @media (max-width: 576px) {
             .pagination-controls {
                 flex-direction: column;
@@ -599,6 +631,13 @@
 
                 <!-- 用户表格 -->
                 <div v-else class="users-table-container">
+                    <!-- 简单分页（类似chat.html） -->
+                    <div class="simple-pagination" v-if="totalPages > 1">
+                        <button @click="previousPage" :disabled="currentPage <= 1">上一页</button>
+                        <span>第 {{ currentPage }} / {{ totalPages }} 页 (共 {{ totalUsers }} 位用户)</span>
+                        <button @click="nextPage" :disabled="currentPage >= totalPages">下一页</button>
+                    </div>
+
                     <table class="users-table">
                         <thead>
                         <tr>

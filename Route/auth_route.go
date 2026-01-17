@@ -181,6 +181,14 @@ func AuthRoute() {
 		c.File("./web/root/admin_users.html")
 	})
 
+	r.GET("/admin/chats", func(c *gin.Context) {
+		c.File("./web/root/admin_chats.html")
+	})
+
+	r.GET("/admin/notes", func(c *gin.Context) {
+		c.File("./web/root/admin_notes.html")
+	})
+
 	// 前端路由 - 支持SPA
 	r.NoRoute(func(c *gin.Context) {
 		// 如果是API请求，返回404
