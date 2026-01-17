@@ -16,6 +16,7 @@ const (
 // User 用户数据存储结构
 type User struct {
 	gorm.Model
+	ID           uint   `gorm:"primaryKey"`
 	Username     string `gorm:"uniqueIndex;not null;size:50"`
 	PasswordHash string `gorm:"not null;size:255"`
 	Email        string `gorm:"size:100"`

@@ -20,8 +20,7 @@ func InitDB() error {
 	if err != nil {
 		return fmt.Errorf("数据库连接失败: %w", err)
 	}
-	// 修复 chat_sessions 表的 model_name 列（如果存在迁移问题）
-	err := fixChatSessionModelName(DB)
+
 	if err != nil {
 		return fmt.Errorf("警告: 修复 chat_sessions 表失败: %v", err)
 	}
@@ -106,42 +105,5 @@ func fixChatSessionTimestamps(db *gorm.DB) error {
 	if result.Error != nil {
 		return result.Error
 	}
-	return nil
-}
-
-// 确保默认管理员存在
-// 新增函数
-func ensureAdminExists(db *gorm.DB) error {
-	adminUsername := Config.Cfg.AdminUsername
-	if adminUsername == "" {
-		return errors.New("未配置管理员用户名")
-	}
-
-	var count int64
-	db.Model(&User{}).Where("username = ? AND role = ?", adminUsername, RoleAdmin).Count(&count)
-
-	if count > 0 {
-		log.Println("默认管理员已存在")
-		return nil
-	}
-
-	// 创建管理员
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(Config.Cfg.AdminPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("密码哈希失败: %w", err)
-	}
-
-	admin := &User{
-		Username:     adminUsername,
-		PasswordHash: string(hashedPassword),
-		Email:        Config.Cfg.AdminEmail,
-		Role:         RoleAdmin,
-	}
-
-	if err := db.Create(admin).Error; err != nil {
-		return fmt.Errorf("创建管理员失败: %w", err)
-	}
-
-	log.Printf("默认管理员创建成功: %s", adminUsername)
 	return nil
 }
