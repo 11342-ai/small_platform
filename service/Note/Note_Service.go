@@ -16,6 +16,11 @@ type NoteServiceInterface interface {
 	GetNotesByCategory(UserID uint, category string) ([]database.Note, error)
 	GetNotesByTag(UserID uint, tag string) ([]database.Note, error)
 	SearchNotes(UserID uint, keyword string) ([]database.Note, error)
+
+	// RootGetAllNotes ← 新增：管理员功能
+	RootGetAllNotes(userID uint, page, pageSize int) ([]database.Note, int64, error)
+	RootDeleteNote(noteID uint) error
+	RootGetNoteByID(noteID uint) (*database.Note, error)
 }
 
 var GlobalNoteService NoteServiceInterface
@@ -119,4 +124,72 @@ func (s *NoteService) SearchNotes(UserID uint, keyword string) ([]database.Note,
 	err := s.db.Where("(LOWER(title) LIKE ? OR LOWER(content) LIKE ?) AND user_id = ?",
 		searchPattern, searchPattern, UserID).Order("created_at DESC").Find(&notes).Error
 	return notes, err
+}
+
+// ========== ROOT ==========
+
+// RootGetAllNotes 管理员获取所有笔记（可按用户筛选）
+func (s *NoteService) RootGetAllNotes(userID uint, page, pageSize int) ([]database.Note, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	var notes []database.Note
+	var total int64
+
+	query := database.DB.Model(&database.Note{})
+
+	// 如果指定了用户ID，则筛选该用户的笔记
+	if userID > 0 {
+		query = query.Where("user_id = ?", userID)
+	}
+
+	// 统计总数
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 分页查询，按更新时间倒序
+	offset := (page - 1) * pageSize
+	if err := query.Offset(offset).Limit(pageSize).
+		Order("updated_at DESC").
+		Find(&notes).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return notes, total, nil
+}
+
+// RootGetNoteByID 管理员获取指定笔记详情（无需权限验证）
+func (s *NoteService) RootGetNoteByID(noteID uint) (*database.Note, error) {
+	var note database.Note
+	if err := database.DB.First(&note, noteID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("笔记不存在")
+		}
+		return nil, err
+	}
+	return &note, nil
+}
+
+// RootDeleteNote 管理员删除笔记（硬删除）
+func (s *NoteService) RootDeleteNote(noteID uint) error {
+	// 先检查笔记是否存在
+	var note database.Note
+	if err := database.DB.First(&note, noteID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("笔记不存在")
+		}
+		return err
+	}
+
+	// 删除笔记（软删除，因为 Note 内嵌了 gorm.Model）
+	if err := database.DB.Delete(&note).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

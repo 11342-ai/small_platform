@@ -86,7 +86,6 @@ func main() {
 		log.Printf("Failed to initialize GlobalDefaultSessionCreator")
 		os.Exit(1)
 	}
-
 	LLM_Chat.InitSessionManager(LLM_Chat.GlobalChatService, LLM_Chat.GlobalCacheService, LLM_Chat.GlobalUserAPIService, LLM_Chat.GlobalPersonaManager)
 
 	_ = Note.NewNoteService()

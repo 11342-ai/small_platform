@@ -16,6 +16,10 @@ type Config struct {
 	RedisPort     string `mapstructure:"REDIS_PORT"`
 	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
 	RedisDB       int    `mapstructure:"REDIS_DB"`
+
+	AdminUsername string `mapstructure:"ADMIN_USERNAME"`
+	AdminPassword string `mapstructure:"ADMIN_PASSWORD"`
+	AdminEmail    string `mapstructure:"ADMIN_EMAIL"`
 }
 
 var Cfg Config

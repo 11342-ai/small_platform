@@ -1,10 +1,13 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"github.com/glebarez/sqlite"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"log"
+	"platfrom/Config"
 )
 
 var (
@@ -40,6 +43,11 @@ func InitDB() error {
 	// 修复 chat_sessions 表的时间戳列
 	if err := fixChatSessionTimestamps(DB); err != nil {
 		return fmt.Errorf("警告: 修复 chat_sessions 表时间戳失败: %v", err)
+	}
+
+	if err := ensureAdminExists(DB); err != nil {
+		log.Printf("警告: 创建默认管理员失败: %v", err)
+		// 不影响启动，只记录日志
 	}
 
 	log.Println("数据库连接成功")
@@ -98,5 +106,42 @@ func fixChatSessionTimestamps(db *gorm.DB) error {
 	if result.Error != nil {
 		return result.Error
 	}
+	return nil
+}
+
+// 确保默认管理员存在
+// 新增函数
+func ensureAdminExists(db *gorm.DB) error {
+	adminUsername := Config.Cfg.AdminUsername
+	if adminUsername == "" {
+		return errors.New("未配置管理员用户名")
+	}
+
+	var count int64
+	db.Model(&User{}).Where("username = ? AND role = ?", adminUsername, RoleAdmin).Count(&count)
+
+	if count > 0 {
+		log.Println("默认管理员已存在")
+		return nil
+	}
+
+	// 创建管理员
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(Config.Cfg.AdminPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("密码哈希失败: %w", err)
+	}
+
+	admin := &User{
+		Username:     adminUsername,
+		PasswordHash: string(hashedPassword),
+		Email:        Config.Cfg.AdminEmail,
+		Role:         RoleAdmin,
+	}
+
+	if err := db.Create(admin).Error; err != nil {
+		return fmt.Errorf("创建管理员失败: %w", err)
+	}
+
+	log.Printf("默认管理员创建成功: %s", adminUsername)
 	return nil
 }

@@ -30,6 +30,11 @@ type UserService interface {
 
 	// StartCleanupTask 启动验证码清理任务
 	StartCleanupTask()
+
+	// RootListAllUsers ← 新增：管理员功能
+	RootListAllUsers(page, pageSize int) ([]database.User, int64, error)
+	RootDeleteUserByID(userID uint) error
+	RootAddUser(req database.AdminCreateUserRequest) (*database.User, error)
 }
 
 // 用户服务实现
@@ -289,4 +294,92 @@ func VerifyPassword(password, hash string) bool {
 	}
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+// ====== ROOT ========
+
+// RootListAllUsers 获取所有用户列表（分页）
+func (s *userService) RootListAllUsers(page, pageSize int) ([]database.User, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 10
+	}
+
+	var users []database.User
+	var total int64
+
+	// 计算总数
+	if err := s.db.Model(&database.User{}).Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("统计用户总数失败: %w", err)
+	}
+
+	// 分页查询
+	offset := (page - 1) * pageSize
+	if err := s.db.Offset(offset).Limit(pageSize).Order("created_at DESC").Find(&users).Error; err != nil {
+		return nil, 0, fmt.Errorf("查询用户列表失败: %w", err)
+	}
+
+	return users, total, nil
+}
+
+// RootDeleteUserByID 删除用户（软删除）
+func (s *userService) RootDeleteUserByID(userID uint) error {
+	// 先检查用户是否存在
+	var user database.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("用户不存在")
+		}
+		return fmt.Errorf("查询用户失败: %w", err)
+	}
+
+	// 防止删除管理员自己（可选，根据需求决定）
+	if user.Role == database.RoleAdmin {
+		// 检查是否是最后一个管理员
+		var adminCount int64
+		s.db.Model(&database.User{}).Where("role = ?", database.RoleAdmin).Count(&adminCount)
+		if adminCount <= 1 {
+			return errors.New("不能删除最后一个管理员账户")
+		}
+	}
+
+	// GORM 的 Delete 会自动执行软删除（因为 User 内嵌了 gorm.Model）
+	if err := s.db.Delete(&user).Error; err != nil {
+		return fmt.Errorf("删除用户失败: %w", err)
+	}
+
+	return nil
+}
+
+// RootAddUser 管理员创建用户
+func (s *userService) RootAddUser(req database.AdminCreateUserRequest) (*database.User, error) {
+	// 检查用户名是否已存在
+	var existingUser database.User
+	if err := s.db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		return nil, errors.New("用户名已存在")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("检查用户名失败: %w", err)
+	}
+
+	// 密码哈希
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("密码哈希失败: %w", err)
+	}
+
+	// 创建用户
+	user := &database.User{
+		Username:     req.Username,
+		PasswordHash: string(hashedPassword),
+		Email:        req.Email,
+		Role:         req.Role,
+	}
+
+	if err := s.db.Create(user).Error; err != nil {
+		return nil, fmt.Errorf("创建用户失败: %w", err)
+	}
+
+	return user, nil
 }

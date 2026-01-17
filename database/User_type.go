@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+type Role string
+
+const (
+	RoleAdmin Role = "admin"
+	RoleUser  Role = "user"
+	RoleGuest Role = "guest"
+)
+
 // User 用户数据存储结构
 type User struct {
 	gorm.Model
@@ -12,6 +20,7 @@ type User struct {
 	PasswordHash string `gorm:"not null;size:255"`
 	Email        string `gorm:"size:100"`
 	LastLogin    time.Time
+	Role         Role `gorm:"not null;default:'user'"`
 }
 
 // RegisterRequest 注册时候的请求结构体
@@ -89,4 +98,33 @@ type VerificationCode struct {
 	ExpiresAt time.Time `gorm:"not null"`
 	Used      bool      `gorm:"default:false"`
 	CodeType  string    `gorm:"size:20"` // 验证码类型: password_reset, register, etc.
+}
+
+// ======== ROOT =========
+
+// AdminCreateUserRequest 管理员创建用户请求
+type AdminCreateUserRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=50"`
+	Password string `json:"password" binding:"required,min=6"`
+	Email    string `json:"email" binding:"omitempty,email"`
+	Role     Role   `json:"role" binding:"required,oneof=user"`
+}
+
+// UserListResponse 用户列表响应
+type UserListResponse struct {
+	Users      []UserResponse `json:"users"`
+	Total      int64          `json:"total"`
+	Page       int            `json:"page"`
+	PageSize   int            `json:"page_size"`
+	TotalPages int            `json:"total_pages"`
+}
+
+// AdminUserResponse 管理员查看的用户信息（包含角色）
+type AdminUserResponse struct {
+	ID        uint      `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Role      Role      `json:"role"`
+	LastLogin time.Time `json:"last_login"`
+	CreatedAt time.Time `json:"created_at"`
 }

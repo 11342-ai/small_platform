@@ -11,15 +11,22 @@ import (
 type Claims struct {
 	UserID   uint   `json:"sub"`
 	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
-// GenerateToken 生成JWT令牌
-func GenerateToken(UserID uint, username string) (string, error) {
+// GenerateToken 生成JWT令牌（兼容旧版本，默认角色为 user）
+func GenerateToken(UserID uint, username string, role ...string) (string, error) {
+	userRole := "user" // 默认角色
+	if len(role) > 0 && role[0] != "" {
+		userRole = role[0]
+	}
+
 	expirationTime := time.Now().Add(time.Duration(Config.Cfg.TokenExpiry) * time.Minute)
 	claims := &Claims{
 		UserID:   UserID,
 		Username: username,
+		Role:     userRole, // ← 加入角色
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

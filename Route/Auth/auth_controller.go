@@ -36,7 +36,7 @@ func Register(c *gin.Context) {
 	}
 
 	// 生成JWT令牌
-	token, err := Auth.GenerateToken(user.ID, user.Username)
+	token, err := Auth.GenerateToken(user.ID, user.Username, string(user.Role))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "生成令牌失败",
@@ -94,7 +94,7 @@ func Login(c *gin.Context) {
 	// 这里可以保存到数据库
 
 	// 生成JWT令牌
-	token, err := Auth.GenerateToken(user.ID, user.Username)
+	token, err := Auth.GenerateToken(user.ID, user.Username, string(user.Role))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "生成令牌失败",

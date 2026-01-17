@@ -35,16 +35,37 @@ func AuthRoute() {
 
 	// API 路由
 	api := r.Group("/api")
+	{
+		// 公开路由
+		api.POST("/register", Auth.Register)
+		api.POST("/login", Auth.Login)
+		api.POST("/logout", Auth.Logout)
+		// ← 管理员专用登录入口
+		api.POST("/admin/login", Auth.RootLogin)
+		// 验证码相关路由
+		api.POST("/auth/send-code", Auth.SendVerificationCode)
+		api.POST("/auth/verify-code", Auth.VerifyCode)
+		api.POST("/auth/reset-password", Auth.ResetPassword)
+	}
 
-	// 公开路由
-	api.POST("/register", Auth.Register)
-	api.POST("/login", Auth.Login)
-	api.POST("/logout", Auth.Logout)
+	// 管理员路由组
+	adminGroup := r.Group("/api/admin")
+	adminGroup.Use(Auth.AuthMiddleware(), Auth.AdminMiddleware())
+	{
+		adminGroup.GET("/users", Auth.RootListAllUsers)      // 获取用户列表
+		adminGroup.POST("/users", Auth.RootAddUser)          // 创建用户
+		adminGroup.DELETE("/users/:id", Auth.RootDeleteUser) // 删除用户
 
-	// 验证码相关路由
-	api.POST("/auth/send-code", Auth.SendVerificationCode)
-	api.POST("/auth/verify-code", Auth.VerifyCode)
-	api.POST("/auth/reset-password", Auth.ResetPassword)
+		// ← 新增：聊天管理
+		adminGroup.GET("/sessions", LLM_Chat.RootGetAllSessions)                 // 获取所有会话列表
+		adminGroup.GET("/sessions/:session_id", LLM_Chat.RootGetSessionMessages) // 查看会话消息
+		adminGroup.DELETE("/sessions/:session_id", LLM_Chat.RootDeleteSession)   // 删除会话
+
+		// ← 新增：笔记管理
+		adminGroup.GET("/notes", Note.RootGetAllNotes)       // 获取所有笔记列表
+		adminGroup.GET("/notes/:id", Note.RootGetNoteByID)   // 查看笔记详情
+		adminGroup.DELETE("/notes/:id", Note.RootDeleteNote) // 删除笔记
+	}
 
 	// 需要认证的路由
 	auth := api.Group("/")
@@ -147,6 +168,17 @@ func AuthRoute() {
 
 	r.GET("/share/:share_id", func(c *gin.Context) {
 		c.File("./web/share.html")
+	})
+
+	// =====  ROOT  ======
+
+	// 添加管理员前端页面路由
+	r.GET("/admin/", func(c *gin.Context) {
+		c.File("./web/root/index.html")
+	})
+
+	r.GET("/admin/users", func(c *gin.Context) {
+		c.File("./web/root/admin_users.html")
 	})
 
 	// 前端路由 - 支持SPA

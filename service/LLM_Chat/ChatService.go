@@ -18,6 +18,11 @@ type ChatServiceInterface interface {
 	DeleteChatSession(sessionID string) error
 	UpdateSessionTitle(sessionID, title string) error
 	GetRecentChatMessages(sessionID string, limit int) ([]openai.ChatCompletionMessage, error)
+
+	// RootGetAllSessions ← 新增：管理员功能
+	RootGetAllSessions(page, pageSize int) ([]database.ChatSession, int64, error)
+	RootGetSessionMessages(sessionID string) ([]database.ChatMessage, error)
+	RootDeleteSession(sessionID string) error
 }
 
 var GlobalChatService ChatServiceInterface
@@ -300,4 +305,75 @@ func (s *ChatSessionService) GetRecentChatMessages(sessionID string, limit int) 
 	}
 
 	return chatMessages, nil
+}
+
+// ====== ROOT ======
+
+// RootGetAllSessions 管理员获取所有会话（可按用户筛选）
+func (s *ChatSessionService) RootGetAllSessions(page, pageSize int) ([]database.ChatSession, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	var sessions []database.ChatSession
+	var total int64
+
+	// 直接查询所有会话，不做用户筛选
+	query := s.db.Model(&database.ChatSession{})
+
+	// 统计总数
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("统计会话总数失败: %w", err)
+	}
+
+	// 分页查询，按更新时间倒序
+	offset := (page - 1) * pageSize
+	if err := query.Offset(offset).Limit(pageSize).
+		Order("updated_at DESC").
+		Find(&sessions).Error; err != nil {
+		return nil, 0, fmt.Errorf("查询会话列表失败: %w", err)
+	}
+
+	return sessions, total, nil
+}
+
+// RootGetSessionMessages 管理员获取会话的所有消息（不分页，用于审核）
+func (s *ChatSessionService) RootGetSessionMessages(sessionID string) ([]database.ChatMessage, error) {
+	var messages []database.ChatMessage
+
+	// 查询该会话的所有消息，按创建时间正序
+	if err := s.db.Where("session_id = ?", sessionID).
+		Order("created_at ASC").
+		Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("查询消息失败: %w", err)
+	}
+
+	return messages, nil
+}
+
+// RootDeleteSession 管理员删除会话（硬删除或软删除都可以）
+func (s *ChatSessionService) RootDeleteSession(sessionID string) error {
+	// 使用事务确保数据一致性
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 删除所有消息
+		if err := tx.Where("session_id = ?", sessionID).Delete(&database.ChatMessage{}).Error; err != nil {
+			return fmt.Errorf("删除消息失败: %w", err)
+		}
+
+		// 2. 删除会话
+		if err := tx.Where("session_id = ?", sessionID).Delete(&database.ChatSession{}).Error; err != nil {
+			return fmt.Errorf("删除会话失败: %w", err)
+		}
+
+		// 3. 删除相关的分享记录（如果有）
+		if err := tx.Where("session_id = ?", sessionID).Delete(&database.SharedSession{}).Error; err != nil {
+			return fmt.Errorf("删除分享记录失败: %w", err)
+		}
+
+		log.Printf("管理员删除会话成功: %s", sessionID)
+		return nil
+	})
 }

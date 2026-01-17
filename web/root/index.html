@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员登录</title>
+
+    <!-- 引入Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <!-- 引入Axios -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <!-- 引入SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- 引入Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .admin-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+
+        .admin-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 2.5rem;
+            text-align: center;
+        }
+
+        .admin-card h2 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .admin-card h2 i {
+            color: #e74c3c;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            background: #f8f9fa;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #2c3e50;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(44, 62, 80, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .alert-danger {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background: #efffef;
+            color: #2a7;
+            border: 1px solid #cfc;
+        }
+
+        .admin-panel {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .admin-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .admin-welcome {
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .admin-welcome h4 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+
+        .empty-panel {
+            background: #f8f9fa;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 3rem 1rem;
+            text-align: center;
+            color: #666;
+        }
+
+        .empty-panel i {
+            font-size: 3rem;
+            color: #bbb;
+            margin-bottom: 1rem;
+        }
+
+        .empty-panel h4 {
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #2c3e50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 2rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="admin-container">
+        <!-- 登录表单 -->
+        <div v-if="!isAuthenticated" class="admin-card">
+            <h2><i class="bi bi-shield-lock"></i> 管理员登录</h2>
+
+            <div v-if="loginError" class="alert alert-danger">
+                {{ loginError }}
+            </div>
+
+            <div v-if="loginSuccess" class="alert alert-success">
+                {{ loginSuccess }}
+            </div>
+
+            <form @submit.prevent="handleLogin">
+                <div class="form-group">
+                    <label class="form-label">用户名</label>
+                    <input
+                            v-model="loginForm.username"
+                            type="text"
+                            class="form-control"
+                            placeholder="请输入管理员用户名"
+                            required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input
+                            v-model="loginForm.password"
+                            type="password"
+                            class="form-control"
+                            placeholder="请输入管理员密码"
+                            required
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary" :disabled="loginLoading">
+                    <span v-if="loginLoading" class="spinner"></span>
+                    {{ loginLoading ? '登录中...' : '登录' }}
+                </button>
+            </form>
+        </div>
+
+        <!-- 管理员面板 -->
+        <div v-else class="admin-panel">
+            <div class="admin-header">
+                <div class="admin-title">
+                    <i class="bi bi-shield-check"></i> 管理员面板
+                </div>
+                <button @click="logout" class="btn btn-primary" style="width: auto; padding: 0.5rem 1rem;">
+                    <i class="bi bi-box-arrow-right"></i> 退出
+                </button>
+            </div>
+
+            <div class="admin-welcome">
+                <h4>欢迎，{{ userInfo.username || '管理员' }}</h4>
+                <p>登录时间: {{ formatDate(new Date()) }}</p>
+            </div>
+
+            <div class="empty-panel">
+                <i class="bi bi-layout-text-sidebar-reverse"></i>
+                <h4>空白面板</h4>
+                <p>这里没有任何功能，仅用于管理员身份验证测试。</p>
+            </div>
+        </div>
+
+        <div class="footer-note">
+            <p>© 2023 个人工具平台 - 管理员专用界面</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE_URL = window.location.origin;
+
+    const { createApp, ref, onMounted } = Vue;
+
+    const app = createApp({
+        setup() {
+            // 认证状态
+            const isAuthenticated = ref(false);
+            const token = ref(localStorage.getItem('admin_token') || '');
+
+            // 用户信息
+            const userInfo = ref({
+                username: '',
+                role: ''
+            });
+
+            // 登录相关
+            const loginForm = ref({ username: '', password: '' });
+            const loginLoading = ref(false);
+            const loginError = ref('');
+            const loginSuccess = ref('');
+
+            // 检查认证状态
+            const checkAuth = () => {
+                if (token.value) {
+                    isAuthenticated.value = true;
+                    loadUserInfo();
+                }
+            };
+
+            // 加载用户信息
+            const loadUserInfo = async () => {
+                if (!token.value) return;
+
+                try {
+                    const response = await axios.get(`${API_BASE_URL}/api/profile`, {
+                        headers: {
+                            'Authorization': `Bearer ${token.value}`
+                        }
+                    });
+                    userInfo.value = response.data;
+                } catch (error) {
+                    console.error('获取用户信息失败:', error);
+                    // 如果token无效，清除并退出
+                    if (error.response?.status === 401) {
+                        logout();
+                    }
+                }
+            };
+
+            // 管理员登录
+            const handleLogin = async () => {
+                loginLoading.value = true;
+                loginError.value = '';
+                loginSuccess.value = '';
+
+                try {
+                    const response = await axios.post(`${API_BASE_URL}/api/admin/login`, {
+                        username: loginForm.value.username,
+                        password: loginForm.value.password
+                    });
+
+                    token.value = response.data.token;
+                    localStorage.setItem('admin_token', token.value);
+                    isAuthenticated.value = true;
+
+                    userInfo.value = response.data.user || {};
+
+                    loginSuccess.value = '管理员登录成功！';
+
+                } catch (error) {
+                    loginError.value = error.response?.data?.error || '登录失败，请检查用户名和密码';
+                } finally {
+                    loginLoading.value = false;
+                }
+            };
+
+            // 退出登录
+            const logout = () => {
+                token.value = '';
+                localStorage.removeItem('admin_token');
+                isAuthenticated.value = false;
+                userInfo.value = { username: '', role: '' };
+                loginForm.value = { username: '', password: '' };
+                loginError.value = '';
+                loginSuccess.value = '';
+            };
+
+            // 格式化日期
+            const formatDate = (date) => {
+                return date.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            };
+
+            // 初始化检查认证状态
+            onMounted(() => {
+                checkAuth();
+            });
+
+            return {
+                isAuthenticated,
+                userInfo,
+                loginForm,
+                loginLoading,
+                loginError,
+                loginSuccess,
+                handleLogin,
+                logout,
+                formatDate
+            };
+        }
+    });
+
+    app.mount('#app');
+</script>
+</body>
+</html>
+[file content end]

@@ -77,3 +77,35 @@ type SharedSession struct {
 	CreatedAt    time.Time  `gorm:"autoCreateTime"`
 	UpdatedAt    time.Time  `gorm:"autoUpdateTime"`
 }
+
+// ========== ROOT =========
+
+// AdminSessionResponse 管理员查看的会话信息（包含用户信息）
+type AdminSessionResponse struct {
+	SessionID    string    `json:"session_id"`
+	UserID       uint      `json:"user_id"`
+	Username     string    `json:"username"` // 关联查询用户名
+	Title        string    `json:"title"`
+	ModelName    string    `json:"model_name"`
+	MessageCount int       `json:"message_count"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// AdminSessionListResponse 管理员会话列表响应
+type AdminSessionListResponse struct {
+	Sessions   []AdminSessionResponse `json:"sessions"`
+	Total      int64                  `json:"total"`
+	Page       int                    `json:"page"`
+	PageSize   int                    `json:"page_size"`
+	TotalPages int                    `json:"total_pages"`
+}
+
+// AdminMessageResponse 管理员查看的消息详情
+type AdminMessageResponse struct {
+	ID        uint      `json:"id"`
+	SessionID string    `json:"session_id"`
+	Role      string    `json:"role"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+}
